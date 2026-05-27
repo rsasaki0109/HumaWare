@@ -1,7 +1,7 @@
 """Runtime diagnostics aggregator for HumaWare."""
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Iterable
 
 import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
@@ -29,6 +29,54 @@ class TopicSample:
 
     message: Any | None = None
     received_at: Time | None = None
+
+
+def compute_stale_topics(
+    samples: dict[str, TopicSample],
+    required_topics: Iterable[str],
+    now: Time,
+    timeout: Duration,
+) -> list[str]:
+    """Return the subset of required topics whose last sample is stale or missing."""
+    stale: list[str] = []
+    for topic in required_topics:
+        sample = samples.get(topic)
+        if sample is None or sample.received_at is None:
+            stale.append(topic)
+            continue
+        if now - sample.received_at > timeout:
+            stale.append(topic)
+    return stale
+
+
+def evaluate_health(
+    safety_state: int,
+    locomotion_state: int,
+    active_faults: list[str],
+    active_warnings: list[str],
+    stale_topics: list[str],
+) -> tuple[int, str]:
+    """Map runtime state into a HealthState value and a short summary."""
+    if stale_topics:
+        return HealthState.HEALTH_STALE, "stale runtime topics"
+
+    if safety_state in (
+        SafetyState.STATE_FAULT,
+        SafetyState.STATE_ESTOP,
+        SafetyState.STATE_MRM,
+    ):
+        return HealthState.HEALTH_ERROR, "safety state requires intervention"
+
+    if locomotion_state == LocomotionState.STATE_FAULT:
+        return HealthState.HEALTH_ERROR, "locomotion fault"
+
+    if active_faults:
+        return HealthState.HEALTH_ERROR, "active faults"
+
+    if safety_state == SafetyState.STATE_WARN or active_warnings:
+        return HealthState.HEALTH_WARN, "active warnings"
+
+    return HealthState.HEALTH_OK, "runtime healthy"
 
 
 class DiagnosticsAggregatorNode(Node):
@@ -107,12 +155,12 @@ class DiagnosticsAggregatorNode(Node):
 
     def _stale_topics(self, now: Time) -> list[str]:
         timeout = Duration(seconds=float(self.get_parameter("stale_timeout_s").value))
-        stale_topics = []
-        for topic in self._required_topics():
-            sample = self._samples[topic]
-            if sample.received_at is None or now - sample.received_at > timeout:
-                stale_topics.append(topic)
-        return stale_topics
+        return compute_stale_topics(
+            samples=self._samples,
+            required_topics=self._required_topics(),
+            now=now,
+            timeout=timeout,
+        )
 
     def _build_health(self, now: Time, stale_topics: list[str]) -> HealthState:
         robot_id = str(self.get_parameter("robot_id").value)
@@ -142,30 +190,14 @@ class DiagnosticsAggregatorNode(Node):
         health.active_faults = list(safety.active_faults) if safety is not None else []
         health.active_warnings = list(safety.active_warnings) if safety is not None else []
         health.stale_topics = stale_topics
-        health.state, health.summary = self._evaluate_health(health)
+        health.state, health.summary = evaluate_health(
+            safety_state=health.safety_state,
+            locomotion_state=health.locomotion_state,
+            active_faults=list(health.active_faults),
+            active_warnings=list(health.active_warnings),
+            stale_topics=list(health.stale_topics),
+        )
         return health
-
-    def _evaluate_health(self, health: HealthState) -> tuple[int, str]:
-        if health.stale_topics:
-            return HealthState.HEALTH_STALE, "stale runtime topics"
-
-        if health.safety_state in (
-            SafetyState.STATE_FAULT,
-            SafetyState.STATE_ESTOP,
-            SafetyState.STATE_MRM,
-        ):
-            return HealthState.HEALTH_ERROR, "safety state requires intervention"
-
-        if health.locomotion_state == LocomotionState.STATE_FAULT:
-            return HealthState.HEALTH_ERROR, "locomotion fault"
-
-        if health.active_faults:
-            return HealthState.HEALTH_ERROR, "active faults"
-
-        if health.safety_state == SafetyState.STATE_WARN or health.active_warnings:
-            return HealthState.HEALTH_WARN, "active warnings"
-
-        return HealthState.HEALTH_OK, "runtime healthy"
 
     def _build_diagnostics(
         self,
