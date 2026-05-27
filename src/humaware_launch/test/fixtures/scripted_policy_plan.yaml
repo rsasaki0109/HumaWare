@@ -1,0 +1,12 @@
+# Test fixture plan for the scripted policy launch test.
+#
+# The plan publishes a single distinctive (linear_x, angular_z) pair for
+# long enough that the launch test can reliably observe it on the
+# approved cmd_vel topic without racing the plan's end. Velocities stay
+# inside the arbiter's default clamp limits.
+
+loop: true
+waypoints:
+  - linear_x_mps: 0.07
+    angular_z_radps: 0.11
+    duration_s: 30.0

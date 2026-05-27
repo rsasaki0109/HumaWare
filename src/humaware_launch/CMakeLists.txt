@@ -41,6 +41,16 @@ if(BUILD_TESTING)
     test_replay_only_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=93"
   )
+
+  add_launch_test(
+    test/test_scripted_policy_launch.py
+    TARGET test_scripted_policy_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_scripted_policy_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=94"
+  )
 endif()
 
 ament_package()

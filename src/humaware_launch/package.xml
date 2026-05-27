@@ -24,6 +24,7 @@
   <test_depend>diagnostic_msgs</test_depend>
   <test_depend>humaware_capability_registry</test_depend>
   <test_depend>humaware_msgs</test_depend>
+  <test_depend>humaware_policy_provider_scripted</test_depend>
   <test_depend>humaware_skill_server</test_depend>
   <test_depend>launch_testing</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
