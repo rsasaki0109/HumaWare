@@ -71,6 +71,16 @@ if(BUILD_TESTING)
     test_arbiter_priority_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=96"
   )
+
+  add_launch_test(
+    test/test_mrm_blocks_output_launch.py
+    TARGET test_mrm_blocks_output_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_mrm_blocks_output_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=97"
+  )
 endif()
 
 ament_package()
