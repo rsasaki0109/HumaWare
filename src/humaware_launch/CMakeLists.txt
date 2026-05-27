@@ -61,6 +61,16 @@ if(BUILD_TESTING)
     test_takeover_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=95"
   )
+
+  add_launch_test(
+    test/test_arbiter_priority_launch.py
+    TARGET test_arbiter_priority_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_arbiter_priority_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=96"
+  )
 endif()
 
 ament_package()
