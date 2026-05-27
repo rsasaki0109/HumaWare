@@ -1,0 +1,22 @@
+# Example scripted policy plan.
+#
+# Each waypoint emits a TwistStamped (linear.x, angular.z) candidate for
+# its duration in seconds. The provider walks the list in order. When
+# `loop` is true the provider restarts from the first waypoint; when
+# false the provider stays idle once the plan completes.
+#
+# This plan is intentionally conservative — small velocities, short
+# durations — so that it stays inside humaware_command_arbiter's clamp
+# limits and produces visible state transitions in fixture bags.
+
+loop: false
+waypoints:
+  - linear_x_mps: 0.05
+    angular_z_radps: 0.0
+    duration_s: 2.0
+  - linear_x_mps: 0.0
+    angular_z_radps: 0.2
+    duration_s: 1.5
+  - linear_x_mps: 0.0
+    angular_z_radps: 0.0
+    duration_s: 1.0

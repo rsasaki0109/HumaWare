@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>humaware_policy_provider_scripted</name>
+  <version>0.1.0</version>
+  <description>
+    HumaWare scripted policy provider. Reads a waypoint plan from YAML
+    and publishes candidate velocity commands onto policy/cmd_vel while
+    AI policy mode is active and safety state allows it. It never
+    publishes to approved or actuator topics and never bypasses
+    humaware_safety_manager or humaware_command_arbiter.
+  </description>
+  <maintainer email="maintainers@humaware.dev">HumaWare Maintainers</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>humaware_msgs</depend>
+  <depend>rclpy</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
