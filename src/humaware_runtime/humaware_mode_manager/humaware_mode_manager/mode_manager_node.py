@@ -21,6 +21,25 @@ MODE_NAMES: Dict[str, int] = {
 }
 
 MODE_VALUES = set(MODE_NAMES.values())
+ACTIVE_MODES = (
+    ModeState.MODE_TELEOP,
+    ModeState.MODE_AUTONOMY,
+    ModeState.MODE_AI_POLICY,
+)
+AUTONOMY_MODES = (
+    ModeState.MODE_AUTONOMY,
+    ModeState.MODE_AI_POLICY,
+)
+AI_POLICY_ENTRY_MODES = (
+    ModeState.MODE_TELEOP,
+    ModeState.MODE_AUTONOMY,
+)
+AUTONOMY_BLOCKING_SAFETY_STATES = (
+    SafetyState.STATE_UNKNOWN,
+    SafetyState.STATE_FAULT,
+    SafetyState.STATE_ESTOP,
+    SafetyState.STATE_MRM,
+)
 
 
 class ModeManagerNode(Node):
@@ -152,49 +171,13 @@ class ModeManagerNode(Node):
         self._safety_seen = True
 
     def _evaluate_transition(self, requested_mode: int, takeover: bool) -> tuple[bool, str]:
-        if self._active_mode == ModeState.MODE_SHUTDOWN and requested_mode != ModeState.MODE_SHUTDOWN:
-            return False, "shutdown_is_terminal"
-
-        if requested_mode == self._active_mode:
-            return True, "mode_unchanged"
-
-        if takeover:
-            if self._active_mode not in (
-                ModeState.MODE_AUTONOMY,
-                ModeState.MODE_AI_POLICY,
-                ModeState.MODE_TELEOP,
-            ):
-                return False, "takeover_requires_autonomy_ai_or_teleop"
-            return True, "operator_takeover_accepted"
-
-        if requested_mode in (
-            ModeState.MODE_TELEOP,
-            ModeState.MODE_AUTONOMY,
-            ModeState.MODE_AI_POLICY,
-        ) and not self._safety_seen:
-            return False, "safety_state_unknown"
-
-        if requested_mode in (
-            ModeState.MODE_AUTONOMY,
-            ModeState.MODE_AI_POLICY,
-        ) and self._safety_state in (
-            SafetyState.STATE_UNKNOWN,
-            SafetyState.STATE_FAULT,
-            SafetyState.STATE_ESTOP,
-            SafetyState.STATE_MRM,
-        ):
-            return False, "safety_state_blocks_autonomy"
-
-        if (
-            self._active_mode == ModeState.MODE_MAINTENANCE
-            and requested_mode in (
-                ModeState.MODE_AUTONOMY,
-                ModeState.MODE_AI_POLICY,
-            )
-        ):
-            return False, "maintenance_requires_intermediate_mode"
-
-        return True, "mode accepted"
+        return evaluate_transition(
+            active_mode=self._active_mode,
+            requested_mode=requested_mode,
+            safety_seen=self._safety_seen,
+            safety_state=self._safety_state,
+            takeover=takeover,
+        )
 
     def _apply_mode(self, requested_mode: int, requester: str, reason: str) -> None:
         self._requested_mode = requested_mode
@@ -240,6 +223,39 @@ class ModeManagerNode(Node):
         msg.message = message
         msg.takeover = takeover
         self._transition_pub.publish(msg)
+
+
+def evaluate_transition(
+    active_mode: int,
+    requested_mode: int,
+    safety_seen: bool,
+    safety_state: int,
+    takeover: bool,
+) -> tuple[bool, str]:
+    if active_mode == ModeState.MODE_SHUTDOWN and requested_mode != ModeState.MODE_SHUTDOWN:
+        return False, "shutdown_is_terminal"
+
+    if requested_mode == active_mode:
+        return True, "mode_unchanged"
+
+    if takeover:
+        if active_mode not in ACTIVE_MODES:
+            return False, "takeover_requires_autonomy_ai_or_teleop"
+        return True, "operator_takeover_accepted"
+
+    if requested_mode in ACTIVE_MODES and not safety_seen:
+        return False, "safety_state_unknown"
+
+    if requested_mode in AUTONOMY_MODES and safety_state in AUTONOMY_BLOCKING_SAFETY_STATES:
+        return False, "safety_state_blocks_autonomy"
+
+    if active_mode == ModeState.MODE_MAINTENANCE and requested_mode in AUTONOMY_MODES:
+        return False, "maintenance_requires_intermediate_mode"
+
+    if requested_mode == ModeState.MODE_AI_POLICY and active_mode not in AI_POLICY_ENTRY_MODES:
+        return False, "ai_policy_requires_active_runtime_mode"
+
+    return True, "mode accepted"
 
 
 def main(args=None) -> None:

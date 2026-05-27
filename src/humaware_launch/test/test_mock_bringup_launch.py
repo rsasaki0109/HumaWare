@@ -193,6 +193,15 @@ class TestMockBringupLaunch(unittest.TestCase):
             self.assertTrue(capability_client.wait_for_service(timeout_sec=10.0))
             self.assertTrue(skill_client.wait_for_service(timeout_sec=10.0))
 
+            teleop_response = self._call_until_accepted(
+                executor,
+                mode_client,
+                self._teleop_mode_request,
+                timeout_s=10.0,
+                failure_message="mode manager did not enter teleop mode",
+            )
+            self.assertEqual(ModeState.MODE_TELEOP, teleop_response.active_mode)
+
             mode_response = self._call_until_accepted(
                 executor,
                 mode_client,
@@ -255,6 +264,14 @@ class TestMockBringupLaunch(unittest.TestCase):
             messages_received_buffer_length=1,
         ):
             pass
+
+    @staticmethod
+    def _teleop_mode_request():
+        request = SetMode.Request()
+        request.requested_mode = ModeState.MODE_TELEOP
+        request.requester = "launch_test"
+        request.reason = "skill_arbiter_e2e"
+        return request
 
     @staticmethod
     def _ai_policy_mode_request():

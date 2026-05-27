@@ -21,5 +21,6 @@ Initial guard rules:
 - active modes require a known safety state
 - autonomy and AI policy are blocked during fault, E-stop, or MRM
 - maintenance cannot jump directly to autonomy or AI policy
+- AI policy cannot be entered directly from inactive; enter teleop or autonomy first
 - shutdown is terminal
 - operator takeover can switch autonomy or AI policy to teleop
