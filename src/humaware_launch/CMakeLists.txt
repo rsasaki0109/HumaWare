@@ -51,6 +51,16 @@ if(BUILD_TESTING)
     test_scripted_policy_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=94"
   )
+
+  add_launch_test(
+    test/test_takeover_launch.py
+    TARGET test_takeover_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_takeover_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=95"
+  )
 endif()
 
 ament_package()
