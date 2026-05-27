@@ -111,6 +111,7 @@ If ROS 2 is not installed locally, use the devcontainer or Docker image under `c
 
 - [Manifesto](MANIFESTO.md)
 - [Architecture](ARCHITECTURE.md)
+- [Execution Plan](PLAN.md)
 - [Roadmap](ROADMAP.md)
 - [Safety Policy](SAFETY_POLICY.md)
 - [Message Design Policy](MESSAGE_DESIGN_POLICY.md)

@@ -27,6 +27,7 @@ HumaWare is a ROS 2-native integration and deployment stack for real humanoid ro
 
 ## Roadmap and Governance
 
+- [Execution Plan](../PLAN.md)
 - [Roadmap](roadmap/roadmap.md)
 - [Governance](roadmap/governance.md)
 - [Release Policy](roadmap/release_policy.md)
