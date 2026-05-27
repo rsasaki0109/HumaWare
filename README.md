@@ -50,6 +50,7 @@ The first implementation areas are:
 - `humaware_msgs`
 - `humaware_safety_manager`
 - `humaware_mode_manager`
+- `humaware_capability_registry`
 - `humaware_command_arbiter`
 - `humaware_locomotion_interface`
 - `humaware_mock_locomotion_adapter`

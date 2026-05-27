@@ -5,4 +5,5 @@ HumaWare runtime packages own mode management, task execution, behavior trees, a
 Initial packages:
 
 - `humaware_mode_manager`
+- `humaware_capability_registry`
 - `humaware_command_arbiter`

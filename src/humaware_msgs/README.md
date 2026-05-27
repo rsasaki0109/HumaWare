@@ -10,6 +10,11 @@ Initial health summary:
 
 - `HealthState`: aggregated runtime health for dashboards and smoke tests
 
+Initial capability contracts:
+
+- `Capability`: one callable robot capability and its safety constraints
+- `CapabilityRegistry`: current robot capability set
+
 Initial navigation bridge state:
 
 - `NavigationBridgeState`: Nav2-style velocity bridge status and blocking reason
@@ -17,6 +22,7 @@ Initial navigation bridge state:
 
 Initial services:
 
+- `ListCapabilities`: query all or selected runtime capabilities
 - `SetMode`: request a mode transition through the mode manager
 - `Takeover`: request operator takeover into teleop mode
 - `TriggerMRM`: trigger a minimal risk maneuver through the safety manager

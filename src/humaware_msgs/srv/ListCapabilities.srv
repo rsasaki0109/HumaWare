@@ -1,0 +1,6 @@
+# Query known runtime capabilities. Leave names empty to return all capabilities.
+
+string[] names
+---
+Capability[] capabilities
+string[] missing_names

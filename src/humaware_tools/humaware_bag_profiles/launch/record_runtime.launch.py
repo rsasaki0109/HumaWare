@@ -13,6 +13,7 @@ def _runtime_topics(robot_id: str) -> list[str]:
         f"{robot}/safety/state",
         f"{robot}/safety/mrm_state",
         f"{robot}/runtime/health",
+        f"{robot}/capabilities",
         f"{robot}/locomotion/state",
         f"{robot}/runtime/command_arbitration_state",
         "/diagnostics",

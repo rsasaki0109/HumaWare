@@ -10,6 +10,7 @@ find_package(std_msgs REQUIRED)
 set(msg_files
   "msg/BalanceState.msg"
   "msg/Capability.msg"
+  "msg/CapabilityRegistry.msg"
   "msg/CommandArbitrationState.msg"
   "msg/FootContactState.msg"
   "msg/HealthState.msg"
@@ -24,6 +25,7 @@ set(msg_files
 
 set(srv_files
   "srv/ClearMRM.srv"
+  "srv/ListCapabilities.srv"
   "srv/SetMode.srv"
   "srv/Takeover.srv"
   "srv/TriggerMRM.srv"

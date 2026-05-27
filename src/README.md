@@ -8,6 +8,7 @@ Initial packages:
 - `humaware_mock_robot`: mock state publisher for launch and tooling validation
 - `humaware_safety_manager`: first safety state publisher and MRM boundary
 - `humaware_mode_manager`: authoritative runtime mode state and mode transition service
+- `humaware_capability_registry`: runtime capability registry topic and query service
 - `humaware_command_arbiter`: mode-aware and safety-aware candidate command gate
 - `humaware_locomotion_interface`: approved command to locomotion-state adapter contract
 - `humaware_mock_locomotion_adapter`: mock adapter for locomotion-state validation
