@@ -9,8 +9,9 @@ from humaware_msgs.msg import (
     LocomotionState,
     ModeState,
     SafetyState,
+    SkillExecutionState,
 )
-from humaware_msgs.srv import ListCapabilities
+from humaware_msgs.srv import ExecuteSkill, ListCapabilities
 import launch
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -55,6 +56,7 @@ class TestMockBringupLaunch(unittest.TestCase):
             (f"/{robot_id}/locomotion/state", LocomotionState),
             (f"/{robot_id}/runtime/health", HealthState),
             (f"/{robot_id}/capabilities", CapabilityRegistry),
+            (f"/{robot_id}/skills/state", SkillExecutionState),
             ("/diagnostics", DiagnosticArray),
         ]
 
@@ -88,6 +90,7 @@ class TestMockBringupLaunch(unittest.TestCase):
             )
 
     def test_capability_service_lists_selected_names(self, robot_id):
+        self._wait_for_capabilities_topic(robot_id)
         context = rclpy.context.Context()
         rclpy.init(context=context)
         node = rclpy.create_node(f"capability_registry_test_{os.getpid()}", context=context)
@@ -118,11 +121,53 @@ class TestMockBringupLaunch(unittest.TestCase):
             node.destroy_node()
             rclpy.shutdown(context=context)
 
+    def test_skill_server_accepts_stop_dry_run(self, robot_id):
+        self._wait_for_capabilities_topic(robot_id)
+        context = rclpy.context.Context()
+        rclpy.init(context=context)
+        node = rclpy.create_node(f"skill_server_test_{os.getpid()}", context=context)
+        executor = SingleThreadedExecutor(context=context)
+        executor.add_node(node)
+        try:
+            client = node.create_client(ExecuteSkill, f"/{robot_id}/skills/execute")
+            self.assertTrue(client.wait_for_service(timeout_sec=10.0))
+
+            request = ExecuteSkill.Request()
+            request.capability_name = "stop"
+            request.requester = "launch_test"
+            request.reason = "smoke_test"
+            request.dry_run = True
+            future = client.call_async(request)
+
+            deadline = time.time() + 10.0
+            while time.time() < deadline and not future.done():
+                executor.spin_once(timeout_sec=0.1)
+
+            self.assertTrue(future.done(), "skill server service did not respond")
+            response = future.result()
+            self.assertTrue(response.accepted)
+            self.assertEqual(SkillExecutionState.STATUS_ACCEPTED, response.status)
+            self.assertTrue(response.execution_id)
+        finally:
+            executor.remove_node(node)
+            executor.shutdown()
+            node.destroy_node()
+            rclpy.shutdown(context=context)
+
     @staticmethod
     def _latest_message(waiter, topic):
         messages = waiter.received_messages(topic)
         assert messages, f"no messages received on {topic}"
         return messages[-1]
+
+    @staticmethod
+    def _wait_for_capabilities_topic(robot_id):
+        with WaitForTopics(
+            [(f"/{robot_id}/capabilities", CapabilityRegistry)],
+            timeout=10.0,
+            messages_received_buffer_length=1,
+        ):
+            pass
 
 
 @launch_testing.post_shutdown_test()

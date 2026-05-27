@@ -6,4 +6,5 @@ Initial packages:
 
 - `humaware_mode_manager`
 - `humaware_capability_registry`
+- `humaware_skill_server`
 - `humaware_command_arbiter`

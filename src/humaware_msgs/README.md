@@ -14,6 +14,7 @@ Initial capability contracts:
 
 - `Capability`: one callable robot capability and its safety constraints
 - `CapabilityRegistry`: current robot capability set
+- `SkillExecutionState`: last request handled by the skill server
 
 Initial navigation bridge state:
 
@@ -22,6 +23,7 @@ Initial navigation bridge state:
 
 Initial services:
 
+- `ExecuteSkill`: request a capability through the skill server
 - `ListCapabilities`: query all or selected runtime capabilities
 - `SetMode`: request a mode transition through the mode manager
 - `Takeover`: request operator takeover into teleop mode

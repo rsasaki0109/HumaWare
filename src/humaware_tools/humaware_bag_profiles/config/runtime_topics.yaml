@@ -10,6 +10,7 @@ required_topics:
   - /{robot_id}/safety/mrm_state
   - /{robot_id}/runtime/health
   - /{robot_id}/capabilities
+  - /{robot_id}/skills/state
   - /{robot_id}/locomotion/state
   - /{robot_id}/runtime/command_arbitration_state
   - /diagnostics

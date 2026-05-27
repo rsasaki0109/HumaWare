@@ -21,10 +21,12 @@ set(msg_files
   "msg/MRMState.msg"
   "msg/NavigationBridgeState.msg"
   "msg/SafetyState.msg"
+  "msg/SkillExecutionState.msg"
 )
 
 set(srv_files
   "srv/ClearMRM.srv"
+  "srv/ExecuteSkill.srv"
   "srv/ListCapabilities.srv"
   "srv/SetMode.srv"
   "srv/Takeover.srv"

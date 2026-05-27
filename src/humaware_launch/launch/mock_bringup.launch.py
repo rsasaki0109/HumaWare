@@ -45,6 +45,14 @@ def generate_launch_description():
                 parameters=[{"robot_id": robot_id}],
             ),
             Node(
+                package="humaware_skill_server",
+                executable="skill_server_node",
+                namespace=robot_id,
+                name="skill_server",
+                output="screen",
+                parameters=[{"robot_id": robot_id}],
+            ),
+            Node(
                 package="humaware_mock_robot",
                 executable="mock_robot_node",
                 namespace=robot_id,

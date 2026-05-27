@@ -1,0 +1,20 @@
+# Request execution of a capability through the skill server.
+#
+# The initial API carries a velocity command for locomotion skills. Other
+# capability types can use parameter_keys/parameter_values until a stable action
+# contract is introduced.
+
+string capability_name
+string requester
+string reason
+bool dry_run
+
+geometry_msgs/TwistStamped velocity_command
+
+string[] parameter_keys
+string[] parameter_values
+---
+bool accepted
+string message
+string execution_id
+uint8 status
