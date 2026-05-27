@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>humaware_bag_evaluator</name>
+  <version>0.1.0</version>
+  <description>
+    Runtime bag evaluation scaffold. Inspects a recorded HumaWare runtime
+    bag for required topic coverage, gaps in publication, and key state
+    transitions on mode, safety, and command arbitration topics.
+  </description>
+  <maintainer email="maintainers@humaware.dev">HumaWare Maintainers</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>humaware_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>rosbag2_py</depend>
+  <depend>rosidl_runtime_py</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
