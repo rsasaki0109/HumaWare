@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a HumanoidWare feature.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real integration problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the interface, package, or workflow.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core runtime
+        - safety
+        - lifecycle
+        - locomotion
+        - navigation
+        - manipulation
+        - teleop
+        - AI policy runtime
+        - hardware adapter
+        - simulation
+        - fleet
+        - tooling
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety impact
+      description: Explain command, mode, or real-robot safety impact.
+    validations:
+      required: true

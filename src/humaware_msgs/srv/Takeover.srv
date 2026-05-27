@@ -1,0 +1,9 @@
+# Request operator takeover into teleop mode.
+
+string requester
+string reason
+---
+bool accepted
+uint8 previous_mode
+uint8 active_mode
+string message

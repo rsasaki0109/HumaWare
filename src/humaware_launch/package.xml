@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>humaware_launch</name>
+  <version>0.1.0</version>
+  <description>Launch profiles for HumaWare runtime bringup.</description>
+  <maintainer email="maintainers@humaware.dev">HumaWare Maintainers</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>humaware_command_arbiter</exec_depend>
+  <exec_depend>humaware_diagnostics_aggregator</exec_depend>
+  <exec_depend>humaware_keyboard_teleop</exec_depend>
+  <exec_depend>humaware_mock_locomotion_adapter</exec_depend>
+  <exec_depend>humaware_mock_robot</exec_depend>
+  <exec_depend>humaware_mode_manager</exec_depend>
+  <exec_depend>humaware_nav2_bridge</exec_depend>
+  <exec_depend>humaware_safety_manager</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>diagnostic_msgs</test_depend>
+  <test_depend>humaware_msgs</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a reproducible HumanoidWare issue.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Commands, launch files, and steps.
+      value: |
+        ```bash
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      value: |
+        Robot:
+        Simulator:
+        Firmware:
+        ROS distro:
+        OS:
+        Git SHA:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and bags
+      description: Link logs, rosbag files, screenshots, or diagnostics.
+    validations:
+      required: false

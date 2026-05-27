@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>humaware_bag_profiles</name>
+  <version>0.1.0</version>
+  <description>Rosbag record and replay profiles for HumaWare runtime topics.</description>
+  <maintainer email="maintainers@humaware.dev">HumaWare Maintainers</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>rosbag2_transport</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

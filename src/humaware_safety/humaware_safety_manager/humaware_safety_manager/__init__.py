@@ -1,0 +1,1 @@
+"""HumaWare safety manager package."""

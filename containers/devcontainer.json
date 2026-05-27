@@ -1,0 +1,19 @@
+{
+  "name": "HumaWare Jazzy",
+  "build": {
+    "dockerfile": "Dockerfile.jazzy",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/humaware",
+  "runArgs": ["--net=host"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-iot.vscode-ros",
+        "ms-python.python",
+        "ms-vscode.cpptools"
+      ]
+    }
+  },
+  "postCreateCommand": "bash -lc 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install || true'"
+}

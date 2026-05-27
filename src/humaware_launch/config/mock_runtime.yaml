@@ -1,0 +1,69 @@
+mock_001:
+  mode_manager:
+    ros__parameters:
+      robot_id: mock_001
+      initial_mode: inactive
+      publish_rate_hz: 10.0
+  mock_robot:
+    ros__parameters:
+      robot_id: mock_001
+      publish_rate_hz: 10.0
+      battery_percentage: 100.0
+  safety_manager:
+    ros__parameters:
+      robot_id: mock_001
+      publish_rate_hz: 10.0
+      estop_engaged: false
+      mrm_active: false
+      mrm_reason: ""
+      require_teleop_heartbeat: true
+      teleop_heartbeat_timeout_s: 1.0
+      teleop_heartbeat_timeout_triggers_mrm: false
+      require_hardware_heartbeat: false
+      hardware_heartbeat_timeout_s: 1.0
+      hardware_heartbeat_timeout_triggers_mrm: true
+      monitor_approved_commands: true
+      approved_command_timeout_s: 1.0
+      approved_command_timeout_triggers_mrm: false
+  mock_locomotion_adapter:
+    ros__parameters:
+      robot_id: mock_001
+      publish_rate_hz: 20.0
+      command_timeout_s: 0.75
+      stop_settle_time_s: 0.4
+      walk_epsilon: 0.01
+      max_safe_linear_velocity_mps: 0.5
+      max_safe_angular_velocity_radps: 0.5
+  command_arbiter:
+    ros__parameters:
+      robot_id: mock_001
+      publish_rate_hz: 20.0
+      command_timeout_s: 0.5
+      max_linear_velocity_mps: 0.5
+      max_angular_velocity_radps: 0.5
+      publish_stop_on_block: true
+  diagnostics_aggregator:
+    ros__parameters:
+      robot_id: mock_001
+      publish_rate_hz: 2.0
+      stale_timeout_s: 1.5
+      diagnostics_topic: /diagnostics
+      monitor_nav2_bridge: false
+      monitor_teleop_heartbeat: false
+  keyboard_teleop:
+    ros__parameters:
+      robot_id: mock_001
+      publish_rate_hz: 20.0
+      linear_step_mps: 0.05
+      angular_step_radps: 0.1
+      max_linear_velocity_mps: 0.5
+      max_angular_velocity_radps: 0.5
+      key_timeout_s: 0.5
+      print_help_on_start: true
+  nav2_bridge:
+    ros__parameters:
+      robot_id: mock_001
+      enabled: true
+      publish_rate_hz: 20.0
+      command_timeout_s: 0.75
+      input_frame_id: nav2

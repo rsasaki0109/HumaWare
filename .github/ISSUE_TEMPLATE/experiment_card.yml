@@ -1,0 +1,55 @@
+name: Experiment card
+description: Record a real robot or simulator experiment.
+title: "[Experiment]: "
+labels: ["experiment"]
+body:
+  - type: input
+    id: experiment_id
+    attributes:
+      label: Experiment ID
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      value: |
+        Robot:
+        Simulator:
+        Firmware:
+        ROS distro:
+        Surface:
+        Battery:
+        Network:
+        Git SHA:
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Launch command
+      value: |
+        ```bash
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and observed behavior
+      value: |
+        Expected:
+        Observed:
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Artifacts
+      value: |
+        Bag file:
+        Logs:
+        Video:
+        Failure modes:
+    validations:
+      required: false

@@ -1,0 +1,8 @@
+# Clear a manually triggered minimal risk maneuver.
+
+string requester
+string reason
+---
+bool accepted
+uint8 active_safety_state
+string message

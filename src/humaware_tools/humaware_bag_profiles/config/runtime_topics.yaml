@@ -1,0 +1,30 @@
+# Runtime topics recorded by the default HumaWare bag profile.
+#
+# Use {robot_id} as the robot namespace placeholder.
+# Replay these bags only in an offline or hardware-disconnected ROS graph.
+
+required_topics:
+  - /{robot_id}/mode/state
+  - /{robot_id}/mode/transition_state
+  - /{robot_id}/safety/state
+  - /{robot_id}/safety/mrm_state
+  - /{robot_id}/runtime/health
+  - /{robot_id}/locomotion/state
+  - /{robot_id}/runtime/command_arbitration_state
+  - /diagnostics
+
+optional_topics:
+  - /{robot_id}/navigation/nav2_bridge_state
+  - /{robot_id}/teleop/heartbeat
+  - /{robot_id}/cmd_vel/approved
+  - /{robot_id}/teleop/cmd_vel
+  - /{robot_id}/autonomy/cmd_vel
+  - /{robot_id}/policy/cmd_vel
+  - /tf
+  - /tf_static
+  - /clock
+
+replay_safety_policy:
+  - Do not run replay in a ROS graph connected to real hardware adapters.
+  - Do not use replay to drive hardware command topics.
+  - Prefer an isolated ROS_DOMAIN_ID or offline workstation for incident analysis.
