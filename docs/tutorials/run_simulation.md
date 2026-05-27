@@ -2,6 +2,10 @@
 
 The first simulation profile is a mock bringup path. It validates launch structure, runtime state topics, and safety-manager wiring before a full Gazebo or MuJoCo scenario exists.
 
+Simulation is a backend adapter path, not the product center. Simulation profiles
+must preserve the same mode, safety, arbitration, diagnostics, and logging
+contracts used by real robot deployments.
+
 ```bash
 source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install

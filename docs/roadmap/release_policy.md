@@ -16,7 +16,7 @@ Every release should include:
 - migration notes
 - known safety limitations
 - verified robot matrix
-- benchmark results where available
+- operational validation results where available
 
 ## Verification
 

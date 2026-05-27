@@ -4,6 +4,11 @@ HumaWare is a capability-based humanoid integration runtime.
 
 It treats a robot as a set of capabilities rather than a loose collection of topics. Capabilities can be exposed to applications, teleop tools, planners, and policy runtimes while still passing through mode checks, safety checks, and command arbitration.
 
+The architecture is deployment-first. Physics simulators, RL policies, and
+foundation models are external providers behind stable runtime interfaces. The
+core system owns orchestration, safety, diagnostics, logging, replay,
+distributed execution, and operational monitoring for real robots.
+
 ```text
 Application / Fleet / Teleop / AI Policy
         |
@@ -45,7 +50,9 @@ Adapters connect HumaWare to external systems:
 - teleop providers
 - fleet adapters
 
-Adapters must not bypass safety management.
+Adapters must preserve the same runtime contracts used by real robots. Simulator
+and AI adapters must not bypass safety management, command arbitration, or
+operator takeover paths.
 
 ## Command Priority
 

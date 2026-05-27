@@ -19,6 +19,21 @@ HumaWare is the open integration runtime for real-world humanoid robots:
 
 The first target is not a new walking controller or a new VLA model. The first target is a reproducible runtime where one humanoid robot can be brought up under ROS 2 lifecycle control, switched between teleoperation and Nav2-driven movement, stopped safely on faults, and replayed from logs.
 
+## Direction Guardrails
+
+HumaWare is deployment-first infrastructure. It is not a Genesis-style physics
+simulation platform, an RL training environment, a foundation model training
+codebase, or a benchmark-first research repository.
+
+Simulators, robot learning libraries, and AI models are backend components that
+can be integrated through adapters and policy providers. They are not the center
+of the project. The center of the project is continuous real-world operation:
+bringup, mode management, teleoperation, safety, diagnostics, logging, replay,
+deployment tooling, fleet integration, and operational monitoring.
+
+The project optimizes for reusable infrastructure that keeps real humanoid
+systems running, debuggable, and recoverable over time.
+
 ## Scope
 
 HumaWare provides the integration layer between application logic, autonomy stacks, robot learning policies, hardware adapters, simulators, and real robot safety systems.
@@ -63,7 +78,7 @@ The first implementation areas are:
 - `humaware_diagnostics_aggregator`
 - `humaware_bag_profiles`
 - `humaware_mock_robot`
-- simulation and rosbag replay profiles
+- backend simulator and rosbag replay profiles
 
 ## Repository Status
 
@@ -87,6 +102,8 @@ If ROS 2 is not installed locally, use the devcontainer or Docker image under `c
 - Prefer standard ROS messages before adding custom messages.
 - Never send unvalidated AI, planner, or teleop commands directly to hardware topics.
 - Route executable robot commands through safety management and command arbitration.
+- Treat simulation as an adapter for runtime validation, not as the primary product.
+- Prefer operational robustness over one-off demos or leaderboard-style benchmarks.
 - Treat real-robot claims as experimental results: include robot model, firmware, environment, logs, bags, and git SHA.
 - Keep the core stable and move experimental adapters into universe-style packages.
 

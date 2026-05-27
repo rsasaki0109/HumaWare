@@ -9,7 +9,7 @@
 - first custom messages
 - AGENTS.md project rules
 
-## Phase 1: Simulation MVP
+## Phase 1: Runtime MVP
 
 - lifecycle bringup
 - mock robot
@@ -17,7 +17,7 @@
 - Nav2 bridge
 - basic safety manager
 - rosbag record and replay
-- Gazebo or MuJoCo demo
+- optional backend simulator profile
 - "run in 10 minutes" documentation
 
 ## Phase 2: First Real Robot
@@ -28,7 +28,7 @@
 - Nav2 goal demo
 - MRM on timeout or network loss
 - diagnostics dashboard
-- benchmark v0.1
+- operational validation report v0.1
 - video, logs, robot model, firmware, and git SHA
 
 ## Phase 3: Developer Ecosystem
@@ -49,7 +49,7 @@
 - incident replay tooling
 - policy safety gate
 - fleet coordination demo
-- lab or warehouse scenario benchmark
+- lab or warehouse operational robustness scenario
 - stable core API
 
 ## Phase 5: Foundation-Grade OSS

@@ -7,7 +7,7 @@ HumaWare starts as a maintainer-led project and should evolve toward working gro
 - core runtime
 - safety and validation
 - hardware adapters
-- simulation and benchmarking
+- simulator adapters and operational validation
 - AI policy runtime
 - fleet and operations
 
