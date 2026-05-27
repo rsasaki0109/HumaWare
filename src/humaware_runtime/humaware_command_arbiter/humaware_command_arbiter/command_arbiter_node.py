@@ -1,7 +1,7 @@
 """Candidate velocity command arbiter for HumaWare."""
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import rclpy
 from builtin_interfaces.msg import Duration as DurationMsg
@@ -14,6 +14,37 @@ from rclpy.time import Time
 from humaware_msgs.msg import CommandArbitrationState, ModeState, SafetyState
 
 
+SOURCE_PRIORITY: Tuple[int, ...] = (
+    CommandArbitrationState.SOURCE_TELEOP,
+    CommandArbitrationState.SOURCE_AUTONOMY,
+    CommandArbitrationState.SOURCE_AI_POLICY,
+)
+
+BLOCKING_SAFETY_STATES: Tuple[int, ...] = (
+    SafetyState.STATE_FAULT,
+    SafetyState.STATE_ESTOP,
+    SafetyState.STATE_MRM,
+)
+
+ALLOWED_SAFETY_STATES: Tuple[int, ...] = (
+    SafetyState.STATE_OK,
+    SafetyState.STATE_WARN,
+)
+
+INACTIVE_MODES: Tuple[int, ...] = (
+    ModeState.MODE_INACTIVE,
+    ModeState.MODE_MAINTENANCE,
+    ModeState.MODE_FAULT,
+    ModeState.MODE_SHUTDOWN,
+)
+
+STOP_REASONS: Tuple[str, ...] = (
+    "safety_state_blocks_output",
+    "active_mode_blocks_output",
+    "no_fresh_command_for_active_mode",
+)
+
+
 @dataclass
 class CandidateCommand:
     """Last command received from a source."""
@@ -23,6 +54,67 @@ class CandidateCommand:
     required_mode: int
     msg: TwistStamped
     received_at: Time
+
+
+def select_candidate(
+    active_mode: int,
+    safety_seen: bool,
+    safety_state: int,
+    candidates: Dict[int, CandidateCommand],
+    now: Time,
+    command_timeout: Duration,
+) -> Tuple[Optional[CandidateCommand], str]:
+    """Return the candidate to approve next, plus a reason string."""
+    if not safety_seen:
+        return None, "waiting_for_safety_state"
+    if safety_state in BLOCKING_SAFETY_STATES:
+        return None, "safety_state_blocks_output"
+    if safety_state not in ALLOWED_SAFETY_STATES:
+        return None, "safety_state_not_ready"
+    if active_mode in INACTIVE_MODES:
+        return None, "active_mode_blocks_output"
+
+    for source in SOURCE_PRIORITY:
+        candidate = candidates.get(source)
+        if candidate is None:
+            continue
+        if candidate.required_mode != active_mode:
+            continue
+        if now - candidate.received_at <= command_timeout:
+            return candidate, "approved"
+
+    return None, "no_fresh_command_for_active_mode"
+
+
+def should_publish_stop(reason: str, publish_stop_on_block: bool) -> bool:
+    """Return True when the arbiter should publish a stop on block."""
+    if not publish_stop_on_block:
+        return False
+    return reason in STOP_REASONS
+
+
+def clamp_velocity(
+    msg: TwistStamped,
+    max_linear: float,
+    max_angular: float,
+    stamp,
+    frame_id: str,
+) -> TwistStamped:
+    """Return a TwistStamped clamped to the configured limits."""
+    approved = TwistStamped()
+    approved.header.stamp = stamp
+    approved.header.frame_id = frame_id
+    approved.twist.linear.x = _clamp(msg.twist.linear.x, -max_linear, max_linear)
+    approved.twist.linear.y = _clamp(msg.twist.linear.y, -max_linear, max_linear)
+    approved.twist.linear.z = 0.0
+    approved.twist.angular.x = 0.0
+    approved.twist.angular.y = 0.0
+    approved.twist.angular.z = _clamp(msg.twist.angular.z, -max_angular, max_angular)
+    return approved
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))
 
 
 class CommandArbiterNode(Node):
@@ -108,10 +200,20 @@ class CommandArbiterNode(Node):
 
     def _tick(self) -> None:
         now = self.get_clock().now()
-        candidate, reason = self._select_candidate(now)
+        timeout = Duration(seconds=float(self.get_parameter("command_timeout_s").value))
+        publish_stop_on_block = bool(self.get_parameter("publish_stop_on_block").value)
+
+        candidate, reason = select_candidate(
+            active_mode=self._active_mode,
+            safety_seen=self._last_safety is not None,
+            safety_state=self._safety_state,
+            candidates=self._candidates,
+            now=now,
+            command_timeout=timeout,
+        )
 
         if candidate is None:
-            if self._should_publish_stop(reason):
+            if should_publish_stop(reason, publish_stop_on_block):
                 self._approved_pub.publish(self._make_stop(now))
                 self._publish_state(
                     now,
@@ -144,67 +246,16 @@ class CommandArbiterNode(Node):
             last_command_time=candidate.received_at,
         )
 
-    def _select_candidate(self, now: Time):
-        if self._last_safety is None:
-            return None, "waiting_for_safety_state"
-        if self._safety_state in (
-            SafetyState.STATE_FAULT,
-            SafetyState.STATE_ESTOP,
-            SafetyState.STATE_MRM,
-        ):
-            return None, "safety_state_blocks_output"
-        if self._safety_state not in (SafetyState.STATE_OK, SafetyState.STATE_WARN):
-            return None, "safety_state_not_ready"
-        if self._active_mode in (
-            ModeState.MODE_INACTIVE,
-            ModeState.MODE_MAINTENANCE,
-            ModeState.MODE_FAULT,
-            ModeState.MODE_SHUTDOWN,
-        ):
-            return None, "active_mode_blocks_output"
-
-        for source in (
-            CommandArbitrationState.SOURCE_TELEOP,
-            CommandArbitrationState.SOURCE_AUTONOMY,
-            CommandArbitrationState.SOURCE_AI_POLICY,
-        ):
-            candidate = self._candidates.get(source)
-            if candidate is None:
-                continue
-            if candidate.required_mode != self._active_mode:
-                continue
-            if self._is_fresh(candidate, now):
-                return candidate, "approved"
-
-        return None, "no_fresh_command_for_active_mode"
-
-    def _is_fresh(self, candidate: CandidateCommand, now: Time) -> bool:
-        timeout_s = float(self.get_parameter("command_timeout_s").value)
-        return now - candidate.received_at <= Duration(seconds=timeout_s)
-
-    def _should_publish_stop(self, reason: str) -> bool:
-        if not bool(self.get_parameter("publish_stop_on_block").value):
-            return False
-        return reason in (
-            "safety_state_blocks_output",
-            "active_mode_blocks_output",
-            "no_fresh_command_for_active_mode",
-        )
-
     def _limit_command(self, msg: TwistStamped, now: Time) -> TwistStamped:
         max_linear = float(self.get_parameter("max_linear_velocity_mps").value)
         max_angular = float(self.get_parameter("max_angular_velocity_radps").value)
-
-        approved = TwistStamped()
-        approved.header.stamp = now.to_msg()
-        approved.header.frame_id = msg.header.frame_id
-        approved.twist.linear.x = self._clamp(msg.twist.linear.x, -max_linear, max_linear)
-        approved.twist.linear.y = self._clamp(msg.twist.linear.y, -max_linear, max_linear)
-        approved.twist.linear.z = 0.0
-        approved.twist.angular.x = 0.0
-        approved.twist.angular.y = 0.0
-        approved.twist.angular.z = self._clamp(msg.twist.angular.z, -max_angular, max_angular)
-        return approved
+        return clamp_velocity(
+            msg=msg,
+            max_linear=max_linear,
+            max_angular=max_angular,
+            stamp=now.to_msg(),
+            frame_id=msg.header.frame_id,
+        )
 
     def _make_stop(self, now: Time) -> TwistStamped:
         msg = TwistStamped()
@@ -237,10 +288,6 @@ class CommandArbiterNode(Node):
             state.command_age = self._duration_msg(now - last_command_time)
         state.reason = reason
         self._state_pub.publish(state)
-
-    @staticmethod
-    def _clamp(value: float, minimum: float, maximum: float) -> float:
-        return max(minimum, min(maximum, value))
 
     @staticmethod
     def _duration_msg(duration: Duration) -> DurationMsg:

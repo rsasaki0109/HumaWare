@@ -1,5 +1,8 @@
 """Initial safety manager node for HumaWare."""
 
+from dataclasses import dataclass, field
+from typing import List, Optional
+
 import rclpy
 from geometry_msgs.msg import TwistStamped
 from rclpy.duration import Duration
@@ -10,6 +13,104 @@ from std_msgs.msg import Header
 
 from humaware_msgs.msg import ModeState, MRMState, SafetyState
 from humaware_msgs.srv import ClearMRM, TriggerMRM
+
+
+HEARTBEAT_MODES = (ModeState.MODE_TELEOP, ModeState.MODE_AUTONOMY, ModeState.MODE_AI_POLICY)
+
+
+@dataclass
+class HeartbeatPolicy:
+    """Configuration for a single heartbeat watchdog."""
+
+    name: str
+    timeout: Duration
+    trigger_mrm: bool
+
+
+@dataclass
+class WatchdogResult:
+    """Output of the watchdog evaluation."""
+
+    warnings: List[str] = field(default_factory=list)
+    mrm_reasons: List[str] = field(default_factory=list)
+
+
+def check_heartbeat(
+    now: Time,
+    last_seen: Optional[Time],
+    policy: HeartbeatPolicy,
+) -> Optional[tuple[str, bool]]:
+    """Return (reason, triggers_mrm) when the heartbeat is missing or stale."""
+    if last_seen is None:
+        return f"{policy.name}_missing", policy.trigger_mrm
+    if now - last_seen > policy.timeout:
+        return f"{policy.name}_timeout", policy.trigger_mrm
+    return None
+
+
+def evaluate_watchdogs(
+    now: Time,
+    active_mode: int,
+    teleop_last_seen: Optional[Time],
+    hardware_last_seen: Optional[Time],
+    approved_last_seen: Optional[Time],
+    require_teleop_heartbeat: bool,
+    teleop_policy: HeartbeatPolicy,
+    require_hardware_heartbeat: bool,
+    hardware_policy: HeartbeatPolicy,
+    monitor_approved_commands: bool,
+    approved_command_timeout: Duration,
+    approved_command_timeout_triggers_mrm: bool,
+) -> WatchdogResult:
+    """Return warnings and MRM reasons derived from watchdog state."""
+    result = WatchdogResult()
+
+    if active_mode == ModeState.MODE_TELEOP and require_teleop_heartbeat:
+        finding = check_heartbeat(now, teleop_last_seen, teleop_policy)
+        if finding is not None:
+            reason, triggers_mrm = finding
+            (result.mrm_reasons if triggers_mrm else result.warnings).append(reason)
+
+    if active_mode in HEARTBEAT_MODES and require_hardware_heartbeat:
+        finding = check_heartbeat(now, hardware_last_seen, hardware_policy)
+        if finding is not None:
+            reason, triggers_mrm = finding
+            (result.mrm_reasons if triggers_mrm else result.warnings).append(reason)
+
+    if (
+        monitor_approved_commands
+        and approved_last_seen is not None
+        and active_mode in HEARTBEAT_MODES
+        and now - approved_last_seen > approved_command_timeout
+    ):
+        reason = "approved_command_timeout"
+        if approved_command_timeout_triggers_mrm:
+            result.mrm_reasons.append(reason)
+        else:
+            result.warnings.append(reason)
+
+    return result
+
+
+def select_mrm_reason(
+    parameter_mrm_active: bool,
+    parameter_mrm_reason: str,
+    service_mrm_active: bool,
+    service_mrm_reason: str,
+    watchdog_mrm_reasons: List[str],
+) -> str:
+    """Return the textual reason for an active MRM, or empty when not active."""
+    if parameter_mrm_active and parameter_mrm_reason:
+        return parameter_mrm_reason
+    if service_mrm_active and service_mrm_reason:
+        return service_mrm_reason
+    if watchdog_mrm_reasons:
+        return watchdog_mrm_reasons[0]
+    if parameter_mrm_active:
+        return "parameter_mrm_active"
+    if service_mrm_active:
+        return "service_mrm_active"
+    return ""
 
 
 class SafetyManagerNode(Node):
@@ -116,10 +217,51 @@ class SafetyManagerNode(Node):
         estop_engaged = bool(self.get_parameter("estop_engaged").value)
         parameter_mrm_active = bool(self.get_parameter("mrm_active").value)
         parameter_mrm_reason = str(self.get_parameter("mrm_reason").value)
-        watchdog_warnings, watchdog_mrm_reasons = self._evaluate_watchdogs(now)
-        mrm_reason = self._select_mrm_reason(
+        watchdogs = evaluate_watchdogs(
+            now=now,
+            active_mode=self._active_mode,
+            teleop_last_seen=self._teleop_heartbeat_at,
+            hardware_last_seen=self._hardware_heartbeat_at,
+            approved_last_seen=self._approved_command_at,
+            require_teleop_heartbeat=bool(self.get_parameter("require_teleop_heartbeat").value),
+            teleop_policy=HeartbeatPolicy(
+                name="teleop_heartbeat",
+                timeout=Duration(
+                    seconds=float(self.get_parameter("teleop_heartbeat_timeout_s").value)
+                ),
+                trigger_mrm=bool(
+                    self.get_parameter("teleop_heartbeat_timeout_triggers_mrm").value
+                ),
+            ),
+            require_hardware_heartbeat=bool(
+                self.get_parameter("require_hardware_heartbeat").value
+            ),
+            hardware_policy=HeartbeatPolicy(
+                name="hardware_heartbeat",
+                timeout=Duration(
+                    seconds=float(self.get_parameter("hardware_heartbeat_timeout_s").value)
+                ),
+                trigger_mrm=bool(
+                    self.get_parameter("hardware_heartbeat_timeout_triggers_mrm").value
+                ),
+            ),
+            monitor_approved_commands=bool(
+                self.get_parameter("monitor_approved_commands").value
+            ),
+            approved_command_timeout=Duration(
+                seconds=float(self.get_parameter("approved_command_timeout_s").value)
+            ),
+            approved_command_timeout_triggers_mrm=bool(
+                self.get_parameter("approved_command_timeout_triggers_mrm").value
+            ),
+        )
+        watchdog_warnings = watchdogs.warnings
+        watchdog_mrm_reasons = watchdogs.mrm_reasons
+        mrm_reason = select_mrm_reason(
             parameter_mrm_active=parameter_mrm_active,
             parameter_mrm_reason=parameter_mrm_reason,
+            service_mrm_active=self._service_mrm_active,
+            service_mrm_reason=self._service_mrm_reason,
             watchdog_mrm_reasons=watchdog_mrm_reasons,
         )
         mrm_active = parameter_mrm_active or self._service_mrm_active or bool(watchdog_mrm_reasons)
@@ -164,103 +306,6 @@ class SafetyManagerNode(Node):
 
         self._safety_pub.publish(safety)
         self._mrm_pub.publish(mrm)
-
-    def _evaluate_watchdogs(self, now: Time) -> tuple[list[str], list[str]]:
-        warnings: list[str] = []
-        mrm_reasons: list[str] = []
-
-        if self._active_mode == ModeState.MODE_TELEOP and bool(
-            self.get_parameter("require_teleop_heartbeat").value
-        ):
-            self._check_heartbeat(
-                now=now,
-                name="teleop_heartbeat",
-                last_seen=self._teleop_heartbeat_at,
-                timeout_s=float(self.get_parameter("teleop_heartbeat_timeout_s").value),
-                trigger_mrm=bool(
-                    self.get_parameter("teleop_heartbeat_timeout_triggers_mrm").value
-                ),
-                warnings=warnings,
-                mrm_reasons=mrm_reasons,
-            )
-
-        if self._active_mode in (
-            ModeState.MODE_TELEOP,
-            ModeState.MODE_AUTONOMY,
-            ModeState.MODE_AI_POLICY,
-        ) and bool(self.get_parameter("require_hardware_heartbeat").value):
-            self._check_heartbeat(
-                now=now,
-                name="hardware_heartbeat",
-                last_seen=self._hardware_heartbeat_at,
-                timeout_s=float(self.get_parameter("hardware_heartbeat_timeout_s").value),
-                trigger_mrm=bool(
-                    self.get_parameter("hardware_heartbeat_timeout_triggers_mrm").value
-                ),
-                warnings=warnings,
-                mrm_reasons=mrm_reasons,
-            )
-
-        if self._should_check_approved_command(now):
-            reason = "approved_command_timeout"
-            if bool(self.get_parameter("approved_command_timeout_triggers_mrm").value):
-                mrm_reasons.append(reason)
-            else:
-                warnings.append(reason)
-
-        return warnings, mrm_reasons
-
-    def _check_heartbeat(
-        self,
-        now: Time,
-        name: str,
-        last_seen: Time | None,
-        timeout_s: float,
-        trigger_mrm: bool,
-        warnings: list[str],
-        mrm_reasons: list[str],
-    ) -> None:
-        reason = f"{name}_missing" if last_seen is None else f"{name}_timeout"
-        timed_out = last_seen is None or now - last_seen > Duration(seconds=timeout_s)
-        if not timed_out:
-            return
-        if trigger_mrm:
-            mrm_reasons.append(reason)
-        else:
-            warnings.append(reason)
-
-    def _should_check_approved_command(self, now: Time) -> bool:
-        if not bool(self.get_parameter("monitor_approved_commands").value):
-            return False
-        if self._approved_command_at is None:
-            return False
-        if self._active_mode not in (
-            ModeState.MODE_TELEOP,
-            ModeState.MODE_AUTONOMY,
-            ModeState.MODE_AI_POLICY,
-        ):
-            return False
-        timeout_s = float(self.get_parameter("approved_command_timeout_s").value)
-        return now - self._approved_command_at > Duration(seconds=timeout_s)
-
-    def _select_mrm_reason(
-        self,
-        parameter_mrm_active: bool,
-        parameter_mrm_reason: str,
-        watchdog_mrm_reasons: list[str],
-    ) -> str:
-        if parameter_mrm_active and parameter_mrm_reason:
-            return parameter_mrm_reason
-        if self._service_mrm_active and self._service_mrm_reason:
-            return self._service_mrm_reason
-        if watchdog_mrm_reasons:
-            return watchdog_mrm_reasons[0]
-        if parameter_mrm_active:
-            return "parameter_mrm_active"
-        if self._service_mrm_active:
-            return "service_mrm_active"
-        return ""
-
 
 def main(args=None) -> None:
     rclpy.init(args=args)

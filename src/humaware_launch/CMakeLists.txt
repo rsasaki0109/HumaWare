@@ -21,6 +21,16 @@ if(BUILD_TESTING)
     test_mock_bringup_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=91"
   )
+
+  add_launch_test(
+    test/test_candidate_command_paths.py
+    TARGET test_candidate_command_paths
+    TIMEOUT 45
+  )
+  set_tests_properties(
+    test_candidate_command_paths
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=92"
+  )
 endif()
 
 ament_package()
