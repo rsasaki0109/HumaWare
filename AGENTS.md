@@ -10,6 +10,15 @@ This repository is HumaWare: a ROS 2-native real-robot integration stack for hum
 - Do not reimplement ROS 2, DDS, Nav2, MoveIt, ros2_control, Isaac ROS, MuJoCo, Gazebo, LeRobot, OpenVLA, Open-RMF, or vendor SDKs.
 - Prefer connecting existing tools through stable humanoid runtime contracts.
 
+## Direction Guardrails
+
+- Keep HumaWare deployment-first, not simulation-first.
+- Do not steer the project toward Genesis-style physics simulation, RL training, foundation model training, or benchmark-first research workflows.
+- Treat Genesis, Isaac, MuJoCo, Gazebo, LeRobot, OpenVLA, and similar systems as backend simulators, AI components, or policy providers that integrate through adapters.
+- Prioritize runtime orchestration, hardware abstraction, teleoperation, diagnostics, fleet management, distributed systems, rosbag-native workflows, deployment tooling, operational monitoring, reproducibility, maintainability, and extensibility.
+- Prefer operational robustness for continuous real-world humanoid operation over one-off demos.
+- Keep AI model outputs as candidate actions that must pass capability, mode, safety, arbitration, logging, and operator takeover boundaries.
+
 ## Safety Rules
 
 - Never bypass `humaware_safety_manager`.
