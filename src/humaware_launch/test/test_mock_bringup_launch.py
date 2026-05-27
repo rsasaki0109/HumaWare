@@ -3,15 +3,18 @@ import time
 import unittest
 
 from diagnostic_msgs.msg import DiagnosticArray
+from geometry_msgs.msg import TwistStamped
 from humaware_msgs.msg import (
+    Capability,
     CapabilityRegistry,
+    CommandArbitrationState,
     HealthState,
     LocomotionState,
     ModeState,
     SafetyState,
     SkillExecutionState,
 )
-from humaware_msgs.srv import ExecuteSkill, ListCapabilities
+from humaware_msgs.srv import ExecuteSkill, ListCapabilities, SetMode
 import launch
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -154,6 +157,90 @@ class TestMockBringupLaunch(unittest.TestCase):
             node.destroy_node()
             rclpy.shutdown(context=context)
 
+    def test_skill_walk_velocity_reaches_command_arbiter(self, robot_id):
+        self._wait_for_capabilities_topic(robot_id)
+        with WaitForTopics([(f"/{robot_id}/safety/state", SafetyState)], timeout=10.0):
+            pass
+
+        context = rclpy.context.Context()
+        rclpy.init(context=context)
+        node = rclpy.create_node(f"skill_arbiter_test_{os.getpid()}", context=context)
+        executor = SingleThreadedExecutor(context=context)
+        executor.add_node(node)
+        approved_commands = []
+        arbitration_states = []
+        try:
+            node.create_subscription(
+                TwistStamped,
+                f"/{robot_id}/cmd_vel/approved",
+                approved_commands.append,
+                10,
+            )
+            node.create_subscription(
+                CommandArbitrationState,
+                f"/{robot_id}/runtime/command_arbitration_state",
+                arbitration_states.append,
+                10,
+            )
+
+            mode_client = node.create_client(SetMode, f"/{robot_id}/mode/set")
+            capability_client = node.create_client(
+                ListCapabilities,
+                f"/{robot_id}/capabilities/list",
+            )
+            skill_client = node.create_client(ExecuteSkill, f"/{robot_id}/skills/execute")
+            self.assertTrue(mode_client.wait_for_service(timeout_sec=10.0))
+            self.assertTrue(capability_client.wait_for_service(timeout_sec=10.0))
+            self.assertTrue(skill_client.wait_for_service(timeout_sec=10.0))
+
+            mode_response = self._call_until_accepted(
+                executor,
+                mode_client,
+                self._ai_policy_mode_request,
+                timeout_s=10.0,
+                failure_message="mode manager did not enter AI policy mode",
+            )
+            self.assertEqual(ModeState.MODE_AI_POLICY, mode_response.active_mode)
+            self._spin_until(
+                executor,
+                lambda: self._arbiter_ready_for_ai_policy(arbitration_states),
+                timeout_s=5.0,
+                failure_message="command arbiter did not observe AI policy mode",
+            )
+
+            capability = self._wait_for_capability_state(
+                executor,
+                capability_client,
+                "walk_velocity",
+                timeout_s=10.0,
+            )
+            self.assertIn(
+                capability.state,
+                (Capability.STATE_IDLE, Capability.STATE_DEGRADED, Capability.STATE_EXECUTING),
+            )
+
+            skill_response = self._call_until_accepted(
+                executor,
+                skill_client,
+                self._walk_velocity_skill_request,
+                timeout_s=10.0,
+                failure_message="skill server did not accept walk_velocity",
+            )
+            self.assertEqual(SkillExecutionState.STATUS_ACCEPTED, skill_response.status)
+
+            self._spin_until(
+                executor,
+                lambda: self._has_ai_policy_arbitration(arbitration_states)
+                and self._has_matching_approved_command(approved_commands),
+                timeout_s=5.0,
+                failure_message="walk_velocity command was not approved by the arbiter",
+            )
+        finally:
+            executor.remove_node(node)
+            executor.shutdown()
+            node.destroy_node()
+            rclpy.shutdown(context=context)
+
     @staticmethod
     def _latest_message(waiter, topic):
         messages = waiter.received_messages(topic)
@@ -168,6 +255,117 @@ class TestMockBringupLaunch(unittest.TestCase):
             messages_received_buffer_length=1,
         ):
             pass
+
+    @staticmethod
+    def _ai_policy_mode_request():
+        request = SetMode.Request()
+        request.requested_mode = ModeState.MODE_AI_POLICY
+        request.requester = "launch_test"
+        request.reason = "skill_arbiter_e2e"
+        return request
+
+    @staticmethod
+    def _walk_velocity_skill_request():
+        request = ExecuteSkill.Request()
+        request.capability_name = "walk_velocity"
+        request.requester = "launch_test"
+        request.reason = "skill_arbiter_e2e"
+        request.dry_run = False
+        request.velocity_command.header.frame_id = ROBOT_ID
+        request.velocity_command.twist.linear.x = 0.2
+        request.velocity_command.twist.angular.z = 0.1
+        return request
+
+    def _call_service(self, executor, client, request, timeout_s, failure_message):
+        future = client.call_async(request)
+        self._spin_until(executor, future.done, timeout_s, failure_message)
+        return future.result()
+
+    def _call_until_accepted(
+        self,
+        executor,
+        client,
+        request_factory,
+        timeout_s,
+        failure_message,
+    ):
+        deadline = time.time() + timeout_s
+        last_message = ""
+        while time.time() < deadline:
+            response = self._call_service(
+                executor,
+                client,
+                request_factory(),
+                max(0.1, deadline - time.time()),
+                failure_message,
+            )
+            if response.accepted:
+                return response
+            last_message = getattr(response, "message", "")
+            executor.spin_once(timeout_sec=0.1)
+
+        self.fail(f"{failure_message}; last response: {last_message}")
+
+    def _wait_for_capability_state(self, executor, client, capability_name, timeout_s):
+        deadline = time.time() + timeout_s
+        last_state = Capability.STATE_UNKNOWN
+        while time.time() < deadline:
+            request = ListCapabilities.Request()
+            request.names = [capability_name]
+            response = self._call_service(
+                executor,
+                client,
+                request,
+                max(0.1, deadline - time.time()),
+                f"capability registry did not respond for {capability_name}",
+            )
+            if response.capabilities:
+                capability = response.capabilities[0]
+                last_state = capability.state
+                if capability.state not in (
+                    Capability.STATE_UNKNOWN,
+                    Capability.STATE_UNAVAILABLE,
+                    Capability.STATE_FAULT,
+                ):
+                    return capability
+            executor.spin_once(timeout_sec=0.1)
+
+        self.fail(f"{capability_name} did not become available; last state: {last_state}")
+
+    def _spin_until(self, executor, predicate, timeout_s, failure_message):
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if predicate():
+                return
+            executor.spin_once(timeout_sec=0.05)
+        if predicate():
+            return
+        self.fail(failure_message)
+
+    @staticmethod
+    def _arbiter_ready_for_ai_policy(states):
+        return any(
+            state.active_mode == ModeState.MODE_AI_POLICY
+            and state.safety_state in (SafetyState.STATE_OK, SafetyState.STATE_WARN)
+            for state in states
+        )
+
+    @staticmethod
+    def _has_ai_policy_arbitration(states):
+        return any(
+            state.output_enabled
+            and state.active_source == CommandArbitrationState.SOURCE_AI_POLICY
+            and state.reason == "approved"
+            for state in states
+        )
+
+    @staticmethod
+    def _has_matching_approved_command(commands):
+        return any(
+            abs(command.twist.linear.x - 0.2) < 1e-6
+            and abs(command.twist.angular.z - 0.1) < 1e-6
+            for command in commands
+        )
 
 
 @launch_testing.post_shutdown_test()
