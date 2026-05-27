@@ -10,6 +10,7 @@ HumaWare is a ROS 2-native integration and deployment stack for real humanoid ro
 - [Interfaces](architecture/interfaces.md)
 - [Behavior Tree](architecture/behavior_tree.md)
 - [Distributed Execution](architecture/distributed_execution.md)
+- [Multi-robot Namespaces](architecture/multi_robot_namespaces.md)
 - [AI Policy Runtime](architecture/ai_policy_runtime.md)
 
 ## Tutorials
