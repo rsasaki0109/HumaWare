@@ -31,6 +31,50 @@ class TopicSample:
     received_at: Time | None = None
 
 
+BASE_REQUIRED_TOPICS: tuple[str, ...] = (
+    "mode/state",
+    "safety/state",
+    "safety/mrm_state",
+    "locomotion/state",
+    "runtime/command_arbitration_state",
+)
+
+
+def required_topics(
+    monitor_nav2_bridge: bool,
+    monitor_teleop_heartbeat: bool,
+) -> list[str]:
+    """Return the topics whose freshness gates runtime health."""
+    topics = list(BASE_REQUIRED_TOPICS)
+    if monitor_nav2_bridge:
+        topics.append("navigation/nav2_bridge_state")
+    if monitor_teleop_heartbeat:
+        topics.append("teleop/heartbeat")
+    return topics
+
+
+def diagnostic_topic_list(
+    monitor_nav2_bridge: bool,
+    monitor_teleop_heartbeat: bool,
+    nav2_seen: bool,
+    teleop_seen: bool,
+) -> list[str]:
+    """Return the topics that get a per-topic diagnostic status.
+
+    Every base required topic always gets a status so the DiagnosticArray
+    is a complete per-topic view of what gates health (this is the single
+    source of truth shared with :func:`required_topics`, so the two cannot
+    drift). The optional nav2/teleop topics get a status when they are
+    monitored or have been seen at least once.
+    """
+    topics = list(BASE_REQUIRED_TOPICS)
+    if monitor_nav2_bridge or nav2_seen:
+        topics.append("navigation/nav2_bridge_state")
+    if monitor_teleop_heartbeat or teleop_seen:
+        topics.append("teleop/heartbeat")
+    return topics
+
+
 def compute_stale_topics(
     samples: dict[str, TopicSample],
     required_topics: Iterable[str],
@@ -140,18 +184,12 @@ class DiagnosticsAggregatorNode(Node):
         self._diagnostics_pub.publish(diagnostics)
 
     def _required_topics(self) -> list[str]:
-        required = [
-            "mode/state",
-            "safety/state",
-            "safety/mrm_state",
-            "locomotion/state",
-            "runtime/command_arbitration_state",
-        ]
-        if bool(self.get_parameter("monitor_nav2_bridge").value):
-            required.append("navigation/nav2_bridge_state")
-        if bool(self.get_parameter("monitor_teleop_heartbeat").value):
-            required.append("teleop/heartbeat")
-        return required
+        return required_topics(
+            monitor_nav2_bridge=bool(self.get_parameter("monitor_nav2_bridge").value),
+            monitor_teleop_heartbeat=bool(
+                self.get_parameter("monitor_teleop_heartbeat").value
+            ),
+        )
 
     def _stale_topics(self, now: Time) -> list[str]:
         timeout = Duration(seconds=float(self.get_parameter("stale_timeout_s").value))
@@ -207,24 +245,18 @@ class DiagnosticsAggregatorNode(Node):
     ) -> DiagnosticArray:
         array = DiagnosticArray()
         array.header.stamp = now.to_msg()
-        array.status = [
-            self._runtime_status(health),
-            self._topic_status("mode/state", stale_topics),
-            self._topic_status("safety/state", stale_topics),
-            self._topic_status("locomotion/state", stale_topics),
-            self._topic_status("runtime/command_arbitration_state", stale_topics),
-        ]
-
-        if bool(self.get_parameter("monitor_nav2_bridge").value) or self._has_seen(
-            "navigation/nav2_bridge_state"
-        ):
-            array.status.append(self._topic_status("navigation/nav2_bridge_state", stale_topics))
-
-        if bool(self.get_parameter("monitor_teleop_heartbeat").value) or self._has_seen(
-            "teleop/heartbeat"
-        ):
-            array.status.append(self._topic_status("teleop/heartbeat", stale_topics))
-
+        topics = diagnostic_topic_list(
+            monitor_nav2_bridge=bool(self.get_parameter("monitor_nav2_bridge").value),
+            monitor_teleop_heartbeat=bool(
+                self.get_parameter("monitor_teleop_heartbeat").value
+            ),
+            nav2_seen=self._has_seen("navigation/nav2_bridge_state"),
+            teleop_seen=self._has_seen("teleop/heartbeat"),
+        )
+        array.status = [self._runtime_status(health)]
+        array.status.extend(
+            self._topic_status(topic, stale_topics) for topic in topics
+        )
         return array
 
     def _runtime_status(self, health: HealthState) -> DiagnosticStatus:
