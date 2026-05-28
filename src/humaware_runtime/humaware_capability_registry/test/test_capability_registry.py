@@ -58,3 +58,31 @@ def test_motion_reports_executing_when_robot_is_walking():
         )
         == Capability.STATE_EXECUTING
     )
+
+
+def test_recover_posture_is_degraded_under_mrm_only_in_permitted_modes():
+    # Under MRM, recover_posture stays degraded-but-usable in a mode that
+    # permits it (it is the recovery action)...
+    assert (
+        capability_state(
+            spec("recover_posture"),
+            ModeState.MODE_TELEOP,
+            SafetyState.STATE_MRM,
+            LocomotionState.STATE_STANDING,
+        )
+        == Capability.STATE_DEGRADED
+    )
+
+
+def test_recover_posture_is_unavailable_under_mrm_in_forbidden_mode():
+    # ...but is unavailable under MRM in a mode that does not permit it
+    # (AUTONOMY is not in recover_modes), rather than falsely degraded.
+    assert (
+        capability_state(
+            spec("recover_posture"),
+            ModeState.MODE_AUTONOMY,
+            SafetyState.STATE_MRM,
+            LocomotionState.STATE_STANDING,
+        )
+        == Capability.STATE_UNAVAILABLE
+    )

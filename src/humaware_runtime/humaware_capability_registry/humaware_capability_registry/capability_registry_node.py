@@ -200,7 +200,14 @@ def capability_state(spec: CapabilitySpec, mode: int, safety: int, locomotion: i
         return Capability.STATE_FAULT
 
     if safety == SafetyState.STATE_MRM:
-        return Capability.STATE_DEGRADED if spec.name == "recover_posture" else Capability.STATE_UNAVAILABLE
+        # recover_posture stays usable (degraded) under MRM because it is the
+        # recovery action -- but only in the modes that actually permit it.
+        # In any other mode it is unavailable like every other capability,
+        # otherwise the registry advertises a capability the current mode
+        # forbids (the mode gate below is never reached under MRM).
+        if spec.name == "recover_posture" and mode in recover_modes():
+            return Capability.STATE_DEGRADED
+        return Capability.STATE_UNAVAILABLE
 
     if safety == SafetyState.STATE_UNKNOWN:
         return Capability.STATE_UNAVAILABLE
