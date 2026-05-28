@@ -111,6 +111,16 @@ if(BUILD_TESTING)
     test_hardware_heartbeat_timeout_mrm_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=100"
   )
+
+  add_launch_test(
+    test/test_nav2_bridge_autonomy_launch.py
+    TARGET test_nav2_bridge_autonomy_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_nav2_bridge_autonomy_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=101"
+  )
 endif()
 
 ament_package()
