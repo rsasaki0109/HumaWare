@@ -19,6 +19,11 @@ def generate_launch_description():
     hardware_heartbeat_timeout_triggers_mrm = LaunchConfiguration(
         "hardware_heartbeat_timeout_triggers_mrm"
     )
+    approved_command_timeout_s = LaunchConfiguration("approved_command_timeout_s")
+    approved_command_timeout_triggers_mrm = LaunchConfiguration(
+        "approved_command_timeout_triggers_mrm"
+    )
+    arbiter_publish_stop_on_block = LaunchConfiguration("arbiter_publish_stop_on_block")
 
     return LaunchDescription(
         [
@@ -73,6 +78,29 @@ def generate_launch_description():
                 description=(
                     "When true, a hardware heartbeat timeout auto-triggers an MRM "
                     "instead of only raising a warning."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "approved_command_timeout_s",
+                default_value="1.0",
+                description=(
+                    "Approved-command watchdog timeout for the safety manager."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "approved_command_timeout_triggers_mrm",
+                default_value="false",
+                description=(
+                    "When true, a stalled approved-command stream auto-triggers "
+                    "an MRM instead of only raising a warning."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "arbiter_publish_stop_on_block",
+                default_value="true",
+                description=(
+                    "When false, the arbiter stops emitting zero stop commands "
+                    "on block, leaving the safety manager as the stop authority."
                 ),
             ),
             LogInfo(msg=["Starting HumaWare mock bringup for ", robot_id]),
@@ -132,6 +160,12 @@ def generate_launch_description():
                         "hardware_heartbeat_timeout_triggers_mrm": ParameterValue(
                             hardware_heartbeat_timeout_triggers_mrm, value_type=bool
                         ),
+                        "approved_command_timeout_s": ParameterValue(
+                            approved_command_timeout_s, value_type=float
+                        ),
+                        "approved_command_timeout_triggers_mrm": ParameterValue(
+                            approved_command_timeout_triggers_mrm, value_type=bool
+                        ),
                     }
                 ],
             ),
@@ -149,7 +183,14 @@ def generate_launch_description():
                 namespace=robot_id,
                 name="command_arbiter",
                 output="screen",
-                parameters=[{"robot_id": robot_id}],
+                parameters=[
+                    {
+                        "robot_id": robot_id,
+                        "publish_stop_on_block": ParameterValue(
+                            arbiter_publish_stop_on_block, value_type=bool
+                        ),
+                    }
+                ],
             ),
             Node(
                 package="humaware_diagnostics_aggregator",

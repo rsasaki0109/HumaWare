@@ -131,6 +131,16 @@ if(BUILD_TESTING)
     test_nav2_bridge_mrm_blocks_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=102"
   )
+
+  add_launch_test(
+    test/test_approved_command_timeout_mrm_launch.py
+    TARGET test_approved_command_timeout_mrm_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_approved_command_timeout_mrm_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=103"
+  )
 endif()
 
 ament_package()
