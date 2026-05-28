@@ -171,6 +171,16 @@ if(BUILD_TESTING)
     test_safety_gates_mode_escalation_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=106"
   )
+
+  add_launch_test(
+    test/test_teleop_drive_then_stale_stop_launch.py
+    TARGET test_teleop_drive_then_stale_stop_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_teleop_drive_then_stale_stop_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=107"
+  )
 endif()
 
 ament_package()
