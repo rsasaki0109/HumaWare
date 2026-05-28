@@ -161,6 +161,16 @@ if(BUILD_TESTING)
     test_watchdog_mrm_auto_recovery_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=105"
   )
+
+  add_launch_test(
+    test/test_safety_gates_mode_escalation_launch.py
+    TARGET test_safety_gates_mode_escalation_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_safety_gates_mode_escalation_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=106"
+  )
 endif()
 
 ament_package()
