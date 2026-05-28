@@ -202,8 +202,18 @@ def _normalize_topic(topic: str) -> str:
 
 
 def format_summary(result: EvaluationResult) -> str:
-    """Return a human-readable summary of an evaluation result."""
-    lines: list[str] = ["Runtime bag evaluation summary", "="]
+    """Return a human-readable summary of an evaluation result.
+
+    Stale topics are listed by their as-recorded (fully-qualified) name so
+    each entry maps unambiguously to a real topic in the bag, whereas the
+    missing-topics list uses the namespace-relative required names (those
+    topics were never observed, so no recorded name exists). The stale
+    figure is the *coverage gap* (largest silence including the leading
+    and trailing window), which can exceed a topic's inter-message
+    ``max gap`` shown in the per-topic counts.
+    """
+    title = "Runtime bag evaluation summary"
+    lines: list[str] = [title, "=" * len(title)]
     if result.missing_required_topics:
         lines.append("Missing required topics:")
         for topic in result.missing_required_topics:
@@ -216,7 +226,7 @@ def format_summary(result: EvaluationResult) -> str:
         for topic in result.stale_topics:
             summary = result.summaries[topic]
             gap_ms = summary.coverage_gap_ns / 1e6
-            lines.append(f"  - {topic} (max gap {gap_ms:.0f} ms)")
+            lines.append(f"  - {topic} (coverage gap {gap_ms:.0f} ms)")
     else:
         lines.append("No topics exceeded the configured gap threshold.")
 

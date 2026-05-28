@@ -250,6 +250,36 @@ def test_format_summary_includes_required_and_stale_sections():
     assert "mode/state" in output
 
 
+def test_format_summary_underlines_title_with_full_rule():
+    output = format_summary(EvaluationResult(summaries={}))
+    lines = output.splitlines()
+    title = "Runtime bag evaluation summary"
+    assert lines[0] == title
+    # The divider must underline the whole title, not be a lone character.
+    assert lines[1] == "=" * len(title)
+
+
+def test_format_summary_labels_stale_entry_with_coverage_gap():
+    from humaware_bag_evaluator.evaluator import TopicSummary
+
+    summary = TopicSummary(
+        topic="/mock_001/safety/state",
+        message_count=5,
+        max_gap_ns=_ns(0.1),
+        coverage_gap_ns=_ns(5.0),
+    )
+    result = EvaluationResult(
+        summaries={"/mock_001/safety/state": summary},
+        stale_topics=["/mock_001/safety/state"],
+    )
+
+    output = format_summary(result)
+    # Stale section reports the coverage gap (5000 ms), distinct from the
+    # per-topic inter-message "max gap" (100 ms).
+    assert "coverage gap 5000 ms" in output
+    assert "max gap 100 ms" in output
+
+
 def test_default_required_topics_are_consistent_with_safety_and_mode():
     assert "mode/state" in DEFAULT_REQUIRED_TOPICS
     assert "safety/state" in DEFAULT_REQUIRED_TOPICS
