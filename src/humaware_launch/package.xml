@@ -23,6 +23,7 @@
 
   <test_depend>diagnostic_msgs</test_depend>
   <test_depend>humaware_capability_registry</test_depend>
+  <test_depend>humaware_hardware_adapter_template</test_depend>
   <test_depend>humaware_msgs</test_depend>
   <test_depend>humaware_policy_provider_scripted</test_depend>
   <test_depend>humaware_skill_server</test_depend>

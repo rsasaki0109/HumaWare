@@ -81,6 +81,16 @@ if(BUILD_TESTING)
     test_mrm_blocks_output_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=97"
   )
+
+  add_launch_test(
+    test/test_hardware_adapter_template_launch.py
+    TARGET test_hardware_adapter_template_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_hardware_adapter_template_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=98"
+  )
 endif()
 
 ament_package()
