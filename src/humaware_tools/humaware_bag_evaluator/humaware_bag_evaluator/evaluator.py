@@ -30,6 +30,7 @@ class TopicSummary:
     first_timestamp_ns: Optional[int] = None
     last_timestamp_ns: Optional[int] = None
     max_gap_ns: int = 0
+    coverage_gap_ns: int = 0
 
 
 @dataclass
@@ -64,6 +65,14 @@ def summarize_topic_freshness(
     largest publication gap observed, the set of required topics that
     were never observed, and the set of topics whose largest gap
     exceeded ``max_gap_ns``.
+
+    Staleness is judged on each topic's *coverage gap*: the largest of
+    its inter-message gap, the silence before its first message relative
+    to the start of the recording, and the silence after its last message
+    relative to the end of the recording. This catches a stream that
+    starts late or dies partway through the bag while other topics keep
+    publishing -- the canonical runtime dropout -- which an inter-message
+    gap alone misses.
     """
     summaries: dict[str, TopicSummary] = {}
     last_timestamp: dict[str, int] = {}
@@ -106,8 +115,18 @@ def summarize_topic_freshness(
         for topic in required
         if not _required_topic_present(topic, observed_topics)
     ]
+
+    firsts = [s.first_timestamp_ns for s in summaries.values() if s.first_timestamp_ns is not None]
+    lasts = [s.last_timestamp_ns for s in summaries.values() if s.last_timestamp_ns is not None]
+    recording_start = min(firsts) if firsts else None
+    recording_end = max(lasts) if lasts else None
+    for summary in summaries.values():
+        summary.coverage_gap_ns = _coverage_gap(summary, recording_start, recording_end)
+
     stale = sorted(
-        topic for topic, summary in summaries.items() if summary.max_gap_ns > max_gap_ns
+        topic
+        for topic, summary in summaries.items()
+        if summary.coverage_gap_ns > max_gap_ns
     )
 
     return EvaluationResult(
@@ -132,6 +151,27 @@ WATCHED_FIELDS_BY_TOPIC: dict[str, tuple[str, ...]] = {
 def _watched_fields(topic: str) -> tuple[str, ...]:
     """Return the set of categorical fields tracked for state transitions."""
     return WATCHED_FIELDS_BY_TOPIC.get(_normalize_topic(topic), ())
+
+
+def _coverage_gap(
+    summary: TopicSummary,
+    recording_start: Optional[int],
+    recording_end: Optional[int],
+) -> int:
+    """Return the largest silence on ``summary`` across the recording window.
+
+    Combines the inter-message gap with the leading silence (recording
+    start to the topic's first message) and the trailing silence (the
+    topic's last message to recording end). A topic that defines a window
+    edge contributes a zero leading/trailing gap, so it is never flagged
+    on its own account.
+    """
+    gaps = [summary.max_gap_ns]
+    if recording_start is not None and summary.first_timestamp_ns is not None:
+        gaps.append(summary.first_timestamp_ns - recording_start)
+    if recording_end is not None and summary.last_timestamp_ns is not None:
+        gaps.append(recording_end - summary.last_timestamp_ns)
+    return max(gaps)
 
 
 def _required_topic_present(required_topic: str, observed_topics: Iterable[str]) -> bool:
@@ -175,7 +215,7 @@ def format_summary(result: EvaluationResult) -> str:
         lines.append("Topics with excessive publication gaps:")
         for topic in result.stale_topics:
             summary = result.summaries[topic]
-            gap_ms = summary.max_gap_ns / 1e6
+            gap_ms = summary.coverage_gap_ns / 1e6
             lines.append(f"  - {topic} (max gap {gap_ms:.0f} ms)")
     else:
         lines.append("No topics exceeded the configured gap threshold.")

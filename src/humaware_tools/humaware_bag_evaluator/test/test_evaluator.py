@@ -86,6 +86,69 @@ def test_summarize_detects_excessive_gap():
     assert result.summaries["mode/state"].max_gap_ns == _ns(2.0)
 
 
+def test_summarize_flags_topic_that_dies_before_bag_end():
+    # safety/state stops at t=0.5s while cmd_vel/approved runs to t=3.0s.
+    # The trailing silence (2.5s) must be flagged even though safety/state's
+    # own inter-message gap is small.
+    messages = []
+    t = 0.0
+    while t <= 0.5 + 1e-9:
+        messages.append(("safety/state", _ns(t), FakeSafety(state=0)))
+        t += 0.1
+    t = 0.0
+    while t <= 3.0 + 1e-9:
+        messages.append(("cmd_vel/approved", _ns(t), FakeSafety(state=0)))
+        t += 0.1
+
+    result = summarize_topic_freshness(
+        messages,
+        required_topics=["safety/state", "cmd_vel/approved"],
+        max_gap_ns=_ns(1.5),
+    )
+
+    assert "safety/state" in result.stale_topics
+    assert "cmd_vel/approved" not in result.stale_topics
+
+
+def test_summarize_flags_topic_that_starts_late():
+    # safety/state only begins at t=2.0s while cmd_vel/approved starts at 0.0;
+    # the leading silence must be flagged.
+    messages = [
+        ("cmd_vel/approved", _ns(0.0), FakeSafety()),
+        ("cmd_vel/approved", _ns(2.0), FakeSafety()),
+        ("cmd_vel/approved", _ns(2.1), FakeSafety()),
+        ("safety/state", _ns(2.0), FakeSafety()),
+        ("safety/state", _ns(2.1), FakeSafety()),
+    ]
+
+    result = summarize_topic_freshness(
+        messages,
+        required_topics=["safety/state", "cmd_vel/approved"],
+        max_gap_ns=_ns(1.5),
+    )
+
+    assert "safety/state" in result.stale_topics
+
+
+def test_summarize_does_not_flag_window_edge_topics_for_coverage():
+    # When every topic spans the full window with tight publication, none
+    # should be flagged by the leading/trailing coverage logic.
+    messages = []
+    for topic in ("safety/state", "cmd_vel/approved"):
+        t = 0.0
+        while t <= 2.0 + 1e-9:
+            messages.append((topic, _ns(t), FakeSafety()))
+            t += 0.1
+
+    result = summarize_topic_freshness(
+        messages,
+        required_topics=["safety/state", "cmd_vel/approved"],
+        max_gap_ns=_ns(1.5),
+    )
+
+    assert result.stale_topics == []
+
+
 def test_summarize_tracks_mode_state_transitions():
     result = summarize_topic_freshness(_stream(), required_topics=[])
 
