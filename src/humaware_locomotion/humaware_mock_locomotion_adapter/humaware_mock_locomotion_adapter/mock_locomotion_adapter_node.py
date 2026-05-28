@@ -160,7 +160,14 @@ class MockLocomotionAdapterNode(Node):
         settle_s = float(self.get_parameter("stop_settle_time_s").value)
         if now - self._stop_started_at >= Duration(seconds=settle_s):
             self._state = LocomotionState.STATE_STANDING
-            self._constraints = []
+            # Clear the stop reason only when the robot is free to move again.
+            # When locomotion is still inhibited (safety not OK/WARN, or a
+            # non-motion mode), the robot is being *held* standing -- keep the
+            # holding reason that _begin_stop set so the state keeps explaining
+            # why it will not move, instead of reporting an empty constraint
+            # list that looks indistinguishable from a healthy idle robot.
+            if not self._is_output_blocked():
+                self._constraints = []
 
     def _is_output_blocked(self) -> bool:
         return self._active_mode not in (
