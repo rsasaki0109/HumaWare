@@ -69,6 +69,29 @@ def test_select_blocked_by_estop_even_with_fresh_command():
     assert reason == "safety_state_blocks_output"
 
 
+def test_select_not_ready_when_safety_seen_but_indeterminate():
+    candidate = _candidate(
+        source=CommandArbitrationState.SOURCE_TELEOP,
+        required_mode=ModeState.MODE_TELEOP,
+        received_at_ns=1_000_000_000,
+        name="teleop",
+    )
+
+    selected, reason = select_candidate(
+        active_mode=ModeState.MODE_TELEOP,
+        safety_seen=True,
+        safety_state=SafetyState.STATE_UNKNOWN,
+        candidates={CommandArbitrationState.SOURCE_TELEOP: candidate},
+        now=Time(nanoseconds=1_000_000_000),
+        command_timeout=COMMAND_TIMEOUT,
+    )
+
+    # Seen but indeterminate -> no approval, and (via STOP_REASONS) a stop.
+    assert selected is None
+    assert reason == "safety_state_not_ready"
+    assert should_publish_stop(reason, True) is True
+
+
 def test_select_blocked_by_mrm():
     candidate = _candidate(
         source=CommandArbitrationState.SOURCE_TELEOP,
@@ -212,6 +235,12 @@ def test_should_publish_stop_for_blocked_reasons():
     assert should_publish_stop("safety_state_blocks_output", True) is True
     assert should_publish_stop("active_mode_blocks_output", True) is True
     assert should_publish_stop("no_fresh_command_for_active_mode", True) is True
+
+
+def test_should_publish_stop_for_indeterminate_safety_state():
+    # An indeterminate (seen but not allowed/blocking) safety state must fail
+    # safe with a stop, just like a known blocking state.
+    assert should_publish_stop("safety_state_not_ready", True) is True
 
 
 def test_should_not_publish_stop_for_waiting_safety():

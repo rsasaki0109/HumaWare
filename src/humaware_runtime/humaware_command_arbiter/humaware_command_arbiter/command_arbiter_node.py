@@ -38,8 +38,17 @@ INACTIVE_MODES: Tuple[int, ...] = (
     ModeState.MODE_SHUTDOWN,
 )
 
+# Reasons (returned by select_candidate when no command is approved) for
+# which the arbiter must publish an explicit zero stop. "safety_state_not_ready"
+# is included so an indeterminate safety state (seen, but neither an allowed
+# nor a recognised blocking state) fails safe with a stop, exactly like the
+# blocking states -- an unknown safety state must never be treated more
+# permissively than a known-bad one. "waiting_for_safety_state" is deliberately
+# excluded: before any safety state has been seen the runtime is still
+# initialising and there is nothing to stop.
 STOP_REASONS: Tuple[str, ...] = (
     "safety_state_blocks_output",
+    "safety_state_not_ready",
     "active_mode_blocks_output",
     "no_fresh_command_for_active_mode",
 )
