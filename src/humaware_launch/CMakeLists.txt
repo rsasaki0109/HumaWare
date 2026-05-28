@@ -151,6 +151,16 @@ if(BUILD_TESTING)
     test_estop_blocks_output_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=104"
   )
+
+  add_launch_test(
+    test/test_watchdog_mrm_auto_recovery_launch.py
+    TARGET test_watchdog_mrm_auto_recovery_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_watchdog_mrm_auto_recovery_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=105"
+  )
 endif()
 
 ament_package()
