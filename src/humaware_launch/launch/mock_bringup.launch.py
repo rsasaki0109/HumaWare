@@ -14,6 +14,11 @@ def generate_launch_description():
     teleop_heartbeat_timeout_triggers_mrm = LaunchConfiguration(
         "teleop_heartbeat_timeout_triggers_mrm"
     )
+    require_hardware_heartbeat = LaunchConfiguration("require_hardware_heartbeat")
+    hardware_heartbeat_timeout_s = LaunchConfiguration("hardware_heartbeat_timeout_s")
+    hardware_heartbeat_timeout_triggers_mrm = LaunchConfiguration(
+        "hardware_heartbeat_timeout_triggers_mrm"
+    )
 
     return LaunchDescription(
         [
@@ -44,6 +49,29 @@ def generate_launch_description():
                 default_value="false",
                 description=(
                     "When true, a teleop heartbeat timeout auto-triggers an MRM "
+                    "instead of only raising a warning."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "require_hardware_heartbeat",
+                default_value="false",
+                description=(
+                    "When true, the safety manager watches the hardware "
+                    "heartbeat while in an active mode."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "hardware_heartbeat_timeout_s",
+                default_value="1.0",
+                description=(
+                    "Hardware heartbeat watchdog timeout for the safety manager."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "hardware_heartbeat_timeout_triggers_mrm",
+                default_value="true",
+                description=(
+                    "When true, a hardware heartbeat timeout auto-triggers an MRM "
                     "instead of only raising a warning."
                 ),
             ),
@@ -94,6 +122,15 @@ def generate_launch_description():
                         ),
                         "teleop_heartbeat_timeout_triggers_mrm": ParameterValue(
                             teleop_heartbeat_timeout_triggers_mrm, value_type=bool
+                        ),
+                        "require_hardware_heartbeat": ParameterValue(
+                            require_hardware_heartbeat, value_type=bool
+                        ),
+                        "hardware_heartbeat_timeout_s": ParameterValue(
+                            hardware_heartbeat_timeout_s, value_type=float
+                        ),
+                        "hardware_heartbeat_timeout_triggers_mrm": ParameterValue(
+                            hardware_heartbeat_timeout_triggers_mrm, value_type=bool
                         ),
                     }
                 ],
