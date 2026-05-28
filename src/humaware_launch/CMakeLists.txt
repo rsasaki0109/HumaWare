@@ -121,6 +121,16 @@ if(BUILD_TESTING)
     test_nav2_bridge_autonomy_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=101"
   )
+
+  add_launch_test(
+    test/test_nav2_bridge_mrm_blocks_launch.py
+    TARGET test_nav2_bridge_mrm_blocks_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_nav2_bridge_mrm_blocks_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=102"
+  )
 endif()
 
 ament_package()
