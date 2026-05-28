@@ -137,6 +137,44 @@ def test_summarize_strips_robot_namespace_for_watched_fields():
     assert transitions[0].current == 4
 
 
+def test_summarize_finds_required_topics_under_robot_namespace():
+    # Bags store fully-qualified, namespaced topic names. A healthy bag
+    # whose required topics are all present under /<robot_id>/ must not be
+    # reported as missing them.
+    messages = []
+    for topic in DEFAULT_REQUIRED_TOPICS:
+        messages.append((f"/mock_001/{topic}", _ns(0.0), FakeSafety()))
+        messages.append((f"/mock_001/{topic}", _ns(0.1), FakeSafety()))
+
+    result = summarize_topic_freshness(messages)
+
+    assert result.missing_required_topics == []
+
+
+def test_summarize_still_reports_missing_topic_under_namespace():
+    # Namespace tolerance must not mask a genuinely absent required topic.
+    messages = [
+        ("/mock_001/mode/state", _ns(0.0), FakeMode(active_mode=1)),
+        ("/mock_001/safety/state", _ns(0.0), FakeSafety(state=0)),
+    ]
+
+    result = summarize_topic_freshness(
+        messages, required_topics=["mode/state", "runtime/health"]
+    )
+
+    assert result.missing_required_topics == ["runtime/health"]
+
+
+def test_summarize_namespace_match_requires_full_trailing_segment():
+    # A partial trailing segment (automode/state) must not satisfy
+    # the required topic mode/state.
+    messages = [("/mock_001/automode/state", _ns(0.0), FakeMode(active_mode=1))]
+
+    result = summarize_topic_freshness(messages, required_topics=["mode/state"])
+
+    assert result.missing_required_topics == ["mode/state"]
+
+
 def test_format_summary_includes_required_and_stale_sections():
     result = EvaluationResult(
         summaries={},

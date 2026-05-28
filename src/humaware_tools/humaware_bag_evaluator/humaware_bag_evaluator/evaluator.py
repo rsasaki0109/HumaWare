@@ -100,7 +100,12 @@ def summarize_topic_freshness(
             previous_values[key] = current
 
     required = list(required_topics)
-    missing_required = [topic for topic in required if topic not in summaries]
+    observed_topics = list(summaries)
+    missing_required = [
+        topic
+        for topic in required
+        if not _required_topic_present(topic, observed_topics)
+    ]
     stale = sorted(
         topic for topic, summary in summaries.items() if summary.max_gap_ns > max_gap_ns
     )
@@ -127,6 +132,24 @@ WATCHED_FIELDS_BY_TOPIC: dict[str, tuple[str, ...]] = {
 def _watched_fields(topic: str) -> tuple[str, ...]:
     """Return the set of categorical fields tracked for state transitions."""
     return WATCHED_FIELDS_BY_TOPIC.get(_normalize_topic(topic), ())
+
+
+def _required_topic_present(required_topic: str, observed_topics: Iterable[str]) -> bool:
+    """Return True when ``required_topic`` was observed in the bag.
+
+    Bags record fully-qualified topic names, which under a runtime
+    namespace look like ``/<robot_id>/safety/state`` while the required
+    topics are namespace-relative (``safety/state``). A required topic is
+    considered present when an observed topic equals it or ends with
+    ``/<required_topic>`` (the leading slash guards against matching a
+    partial trailing segment such as ``automode/state``).
+    """
+    suffix = "/" + required_topic
+    for observed in observed_topics:
+        stripped = observed.lstrip("/")
+        if stripped == required_topic or stripped.endswith(suffix):
+            return True
+    return False
 
 
 def _normalize_topic(topic: str) -> str:
