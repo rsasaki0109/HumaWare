@@ -3,12 +3,17 @@ from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.descriptions import ParameterValue
 
 
 def generate_launch_description():
     robot_id = LaunchConfiguration("robot_id")
     enable_keyboard_teleop = LaunchConfiguration("enable_keyboard_teleop")
     enable_nav2_bridge = LaunchConfiguration("enable_nav2_bridge")
+    teleop_heartbeat_timeout_s = LaunchConfiguration("teleop_heartbeat_timeout_s")
+    teleop_heartbeat_timeout_triggers_mrm = LaunchConfiguration(
+        "teleop_heartbeat_timeout_triggers_mrm"
+    )
 
     return LaunchDescription(
         [
@@ -26,6 +31,21 @@ def generate_launch_description():
                 "enable_nav2_bridge",
                 default_value="false",
                 description="Start Nav2-style velocity bridge in this launch process.",
+            ),
+            DeclareLaunchArgument(
+                "teleop_heartbeat_timeout_s",
+                default_value="1.0",
+                description=(
+                    "Teleop heartbeat watchdog timeout for the safety manager."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "teleop_heartbeat_timeout_triggers_mrm",
+                default_value="false",
+                description=(
+                    "When true, a teleop heartbeat timeout auto-triggers an MRM "
+                    "instead of only raising a warning."
+                ),
             ),
             LogInfo(msg=["Starting HumaWare mock bringup for ", robot_id]),
             Node(
@@ -66,7 +86,17 @@ def generate_launch_description():
                 namespace=robot_id,
                 name="safety_manager",
                 output="screen",
-                parameters=[{"robot_id": robot_id}],
+                parameters=[
+                    {
+                        "robot_id": robot_id,
+                        "teleop_heartbeat_timeout_s": ParameterValue(
+                            teleop_heartbeat_timeout_s, value_type=float
+                        ),
+                        "teleop_heartbeat_timeout_triggers_mrm": ParameterValue(
+                            teleop_heartbeat_timeout_triggers_mrm, value_type=bool
+                        ),
+                    }
+                ],
             ),
             Node(
                 package="humaware_mock_locomotion_adapter",

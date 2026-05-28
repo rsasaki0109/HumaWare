@@ -91,6 +91,16 @@ if(BUILD_TESTING)
     test_hardware_adapter_template_launch
     PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=98"
   )
+
+  add_launch_test(
+    test/test_heartbeat_timeout_mrm_launch.py
+    TARGET test_heartbeat_timeout_mrm_launch
+    TIMEOUT 60
+  )
+  set_tests_properties(
+    test_heartbeat_timeout_mrm_launch
+    PROPERTIES ENVIRONMENT "ROS_DOMAIN_ID=99"
+  )
 endif()
 
 ament_package()
