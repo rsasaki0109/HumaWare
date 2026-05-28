@@ -77,6 +77,20 @@ def evaluate_watchdogs(
             reason, triggers_mrm = finding
             (result.mrm_reasons if triggers_mrm else result.warnings).append(reason)
 
+    # The approved-command watchdog is a *staleness* detector, deliberately
+    # asymmetric with the heartbeat *presence* detectors above (which fire
+    # `_missing` the instant last_seen is None). Heartbeats are produced
+    # continuously from boot regardless of mode, so a None there means the
+    # publisher is absent -- a real fault. Approved commands, by contrast,
+    # only exist once the arbiter starts emitting in an active mode, so a None
+    # here is the *normal* boot / mode-entry transient, not a fault. Firing on
+    # None would raise a spurious warning -- or, under
+    # approved_command_timeout_triggers_mrm, a spurious MRM that blocks startup
+    # at the worst moment. The genuinely dangerous case (a dead arbiter that
+    # never produces approved commands) is already caught downstream: both the
+    # locomotion adapter and the hardware adapter gate age out their approved
+    # input and stop / MRM the robot. So this watchdog only measures staleness
+    # against an established baseline.
     if (
         monitor_approved_commands
         and approved_last_seen is not None

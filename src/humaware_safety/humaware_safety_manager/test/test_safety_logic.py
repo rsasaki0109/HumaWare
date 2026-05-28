@@ -205,6 +205,14 @@ def test_watchdogs_mrm_when_approved_command_policy_says_so():
 
 
 def test_watchdogs_skip_approved_command_when_no_command_ever_seen():
+    # Intentional asymmetry with the heartbeat watchdogs: a never-seen approved
+    # command (approved_last_seen is None) must NOT fire, because the arbiter
+    # only produces approved commands once it is emitting in an active mode --
+    # a None here is the normal boot / mode-entry transient, not a fault.
+    # Firing on None would raise a spurious warning, or (under the MRM policy)
+    # a spurious MRM that blocks startup. A genuinely dead arbiter is caught
+    # downstream by the locomotion and hardware adapter gates. This watchdog is
+    # a staleness detector, not a presence detector; see evaluate_watchdogs.
     result = evaluate_watchdogs(
         now=Time(nanoseconds=_ns(5.0)),
         active_mode=ModeState.MODE_TELEOP,
